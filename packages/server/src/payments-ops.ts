@@ -193,7 +193,13 @@ export async function refundCancelledBookings(db: SupabaseClient, provider: Paym
       const refundable = Number(p.amount_captured_minor) - Number(p.amount_refunded_minor);
       const amount = Math.min(refundable, remaining);
       if (amount <= 0) continue;
-      await refundPayment(db, provider, { paymentId: p.id as string, amountMinor: amount, reason: "CANCELLATION", actorId: null, idempotencyKey: `cancel-refund:${b.id}:${p.id}` });
+      try {
+        // Idempotency key per booking+payment: a retry after a crash never double-refunds.
+        await refundPayment(db, provider, { paymentId: p.id as string, amountMinor: amount, reason: "CANCELLATION", actorId: null, idempotencyKey: `cancel-refund:${b.id}:${p.id}` });
+      } catch (e) {
+        console.error(JSON.stringify({ level: "error", where: "cancellation-refund", bookingId: b.id, error: e instanceof Error ? e.message : String(e) }));
+        break; // retry on the next tick
+      }
       remaining -= amount;
       refunded += amount;
     }

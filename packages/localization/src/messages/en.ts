@@ -83,7 +83,15 @@ export const en = {
     promoCode: "Promo code",
     paymentTitle: "Payment", success: "Payment received — your booking will be confirmed in a moment.",
   },
-  account: { bookings: "My bookings", cancelBooking: "Cancel booking", cancelConfirm: "Cancel this booking?", cancelFee: "Cancellation fee: {amount}", reference: "Reference" },
+  account: {
+    bookings: "My bookings", cancelBooking: "Cancel booking", cancelConfirm: "Cancel this booking?", cancelFee: "Cancellation fee: {amount}", reference: "Reference",
+    documents: "Documents", privacyTitle: "Privacy & data", exportData: "Download my data",
+    exportHint: "A copy of your profile, bookings, payments and messages as a JSON file.",
+    deleteAccount: "Delete my account",
+    deleteHint: "We anonymise your personal data. Records we must keep by law (invoices) remain without your name. Active rentals must be finished first.",
+    deleteConfirm: "Request deletion of your account? This cannot be undone once processed.",
+    deleteRequested: "Your deletion request was received. We'll confirm by email when it's done.",
+  },
   documents: {
     agreementTitle: "Vehicle rental agreement", customer: "Customer", staff: "Company representative", dateOfBirth: "Date of birth",
     license: "Driving licence", expires: "expires", vehicle: "Vehicle", plate: "Registration", rentalPeriod: "Rental period",

@@ -5,7 +5,7 @@ import { DEMO } from "@rental/testing";
 import type { ChannelSender, OutboundMessage } from "@rental/notifications";
 import type { PaymentProvider } from "@rental/payments";
 import {
-  createStaffBooking, dispatchNotifications, generateAgreement, issueInvoice, modifyBookingDates, refundPayment, signAgreement, signedDocumentUrl,
+  createStaffBooking, dispatchNotifications, runScheduledJobs, generateAgreement, issueInvoice, modifyBookingDates, refundPayment, signAgreement, signedDocumentUrl,
 } from "../src";
 
 /**
@@ -135,6 +135,27 @@ describe("notification dispatch", () => {
     expect(inApp!.body.length).toBeGreaterThan(5);
     const { count } = await db.from("notifications").select("*", { count: "exact", head: true }).eq("channel", "PUSH").eq("status", "FAILED");
     expect(count).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("scheduler tick", () => {
+  it("runs every job in isolation, verifies domains and skips payments when unconfigured", async () => {
+    const hostname = `e2e-${randomUUID().slice(0, 8)}.example.test`;
+    const token = randomUUID();
+    const { error } = await db.from("tenant_domains").insert({ tenant_id: DEMO.tenant, hostname, verification_token: token });
+    expect(error).toBeNull();
+    const attached: string[] = [];
+    const results = await runScheduledJobs(db, {
+      provider: null,
+      senders: { EMAIL: new RecordingSender("EMAIL"), PUSH: new RecordingSender("PUSH") },
+      hosting: { addDomain: async (h) => { attached.push(h); }, removeDomain: async () => {} },
+      txtLookup: async (name) => (name === `_rental-verify.${hostname}` ? [[token]] : []),
+    });
+    for (const [job, r] of Object.entries(results)) expect(r.ok, `${job}: ${JSON.stringify(r)}`).toBe(true);
+    expect(results.authorizeDeposits).toEqual({ ok: true, skipped: "payments not configured" });
+    expect(attached).toEqual([hostname]);
+    const { data } = await db.from("tenant_domains").select("status").eq("hostname", hostname).single();
+    expect(data?.status).toBe("VERIFIED");
   });
 });
 

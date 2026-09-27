@@ -84,7 +84,15 @@ export const sq: Messages = {
     promoCode: "Kodi promocional",
     paymentTitle: "Pagesa", success: "Pagesa u mor — rezervimi do të konfirmohet pas pak.",
   },
-  account: { bookings: "Rezervimet e mia", cancelBooking: "Anulo rezervimin", cancelConfirm: "Ta anulojmë këtë rezervim?", cancelFee: "Tarifa e anulimit: {amount}", reference: "Referenca" },
+  account: {
+    bookings: "Rezervimet e mia", cancelBooking: "Anulo rezervimin", cancelConfirm: "Ta anulojmë këtë rezervim?", cancelFee: "Tarifa e anulimit: {amount}", reference: "Referenca",
+    documents: "Dokumentet", privacyTitle: "Privatësia dhe të dhënat", exportData: "Shkarko të dhënat e mia",
+    exportHint: "Një kopje e profilit, rezervimeve, pagesave dhe mesazheve tuaja si skedar JSON.",
+    deleteAccount: "Fshi llogarinë time",
+    deleteHint: "I anonimizojmë të dhënat tuaja personale. Regjistrimet që ligji na detyron t'i ruajmë (faturat) mbeten pa emrin tuaj. Qiratë aktive duhet të përfundojnë më parë.",
+    deleteConfirm: "Të kërkohet fshirja e llogarisë? Pas përpunimit kjo nuk mund të zhbëhet.",
+    deleteRequested: "Kërkesa juaj për fshirje u mor. Do t'ju konfirmojmë me email kur të përfundojë.",
+  },
   documents: {
     agreementTitle: "Kontratë qiraje automjeti", customer: "Klienti", staff: "Përfaqësuesi i kompanisë", dateOfBirth: "Data e lindjes",
     license: "Patenta", expires: "skadon", vehicle: "Automjeti", plate: "Targa", rentalPeriod: "Periudha e qirasë",

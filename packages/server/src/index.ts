@@ -12,3 +12,4 @@ export * from "./staff-bookings";
 export * from "./documents";
 export * from "./dispatch";
 export * from "./domains";
+export * from "./jobs";

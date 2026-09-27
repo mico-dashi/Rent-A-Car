@@ -24,3 +24,11 @@ export async function cancelBooking(form: FormData): Promise<{ ok: boolean; code
     return { ok: false, code: e instanceof Error ? e.message : "INTERNAL_ERROR" };
   }
 }
+
+/** GDPR erasure request. Platform staff anonymise the account once no rental is active. */
+export async function requestAccountDeletion(): Promise<{ ok: boolean; code?: string }> {
+  const { error } = await (await userClient()).rpc("request_account_deletion");
+  if (error) return { ok: false, code: /^[A-Z_]+$/.test(error.message) ? error.message : "INTERNAL_ERROR" };
+  revalidatePath("/account/privacy");
+  return { ok: true };
+}

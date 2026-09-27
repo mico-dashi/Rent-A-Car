@@ -24,7 +24,7 @@ export default async function SystemPage() {
         <Card title={t("admin.platform.failedPayments")}>{(pays ?? []).length === 0 ? <Empty>{t("common.empty")}</Empty> : <Table head={[t("admin.common.date"), t("admin.platform.tenant"), t("admin.common.amount"), t("admin.platform.error")]}>
           {(pays ?? []).map((p) => <tr key={p.id}><td className="text-xs">{dt(p.created_at, "UTC", lang)}</td><td>{tn.get(p.tenant_id)}</td><td>{money(p.amount_minor, p.currency as "EUR", lang)}</td><td className="text-xs text-bad">{p.failure_code} {p.failure_message}</td></tr>)}</Table>}</Card>
         <Card title={t("admin.platform.failedNotifications")}>{(notes ?? []).length === 0 ? <Empty>{t("common.empty")}</Empty> : <Table head={[t("admin.common.date"), t("admin.platform.tenant"), t("admin.settings.event"), t("admin.settings.channel"), t("admin.platform.error")]}>
-          {(notes ?? []).map((n) => <tr key={n.id}><td className="text-xs">{dt(n.created_at, "UTC", lang)}</td><td>{n.tenant_id ? tn.get(n.tenant_id) : "—"}</td><td className="text-xs">{n.event}</td><td>{n.channel}</td><td className="text-xs text-bad">{n.error}</td></tr>)}</Table>}</Card>
+          {(notes ?? []).map((n) => <tr key={n.id}><td className="text-xs">{dt(n.created_at, "UTC", lang)}</td><td>{n.tenant_id ? tn.get(n.tenant_id) : "—"}</td><td className="text-xs">{t(`admin.settings.events.${n.event.replace(".", "_")}`)}</td><td>{n.channel}</td><td className="text-xs text-bad">{n.error}</td></tr>)}</Table>}</Card>
         <p className="text-xs text-muted">{t("admin.platform.sentryHint")} <Link className="underline" href="/platform/audit">{t("admin.platform.nav.audit")}</Link></p>
       </div>
     </>

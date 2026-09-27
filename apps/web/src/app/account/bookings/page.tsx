@@ -23,7 +23,10 @@ export default async function MyBookingsPage({ searchParams }: { searchParams: P
 
   return (
     <div className="container-page pt-12">
-      <h1 className="font-display text-3xl font-black">{t("account.bookings")}</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="font-display text-3xl font-black">{t("account.bookings")}</h1>
+        <Link href="/account/privacy" className="text-sm text-muted underline">{t("account.privacyTitle")}</Link>
+      </div>
       <nav aria-label="Booking tabs" className="mt-6 flex gap-2 overflow-x-auto">
         {TABS.map((k) => (
           <Link key={k} href={`/account/bookings?tab=${k}`} aria-current={k === active ? "page" : undefined}

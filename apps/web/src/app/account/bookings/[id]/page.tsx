@@ -24,6 +24,14 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
   const b = await myBooking(db, tenant.id, id);
   if (!b) notFound();
 
+  const [{ data: agreement }, { data: invoices }] = await Promise.all([
+    db.from("rental_agreements").select("id,status,pdf_path").eq("booking_id", id).neq("status", "VOID").maybeSingle(),
+    db.from("invoices").select("id,kind,number,pdf_path").eq("booking_id", id).order("issued_at"),
+  ]);
+  const docs = [
+    ...(agreement?.pdf_path ? [{ href: `/account/documents/agreement/${agreement.id}`, label: t("documents.agreementTitle") }] : []),
+    ...(invoices ?? []).filter((i) => i.pdf_path).map((i) => ({ href: `/account/documents/invoice/${i.id}`, label: `${t(i.kind === "RECEIPT" ? "documents.receipt" : "documents.invoice")} ${i.number}` })),
+  ];
   const tz = b.pickup?.timezone ?? "UTC";
   const cancellation = quoteCancellation(
     { status: b.status, startsAt: new Date(b.starts_at), totalMinor: b.total_minor, amountPaidMinor: b.amount_paid_minor, amountRefundedMinor: b.amount_refunded_minor },
@@ -46,6 +54,12 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
           <div className="card p-5"><dt className="label">{t("search.pickupDate")}</dt><dd>{b.pickup?.name}<br />{formatDateTime(b.starts_at, tz, lang)}</dd></div>
           <div className="card p-5"><dt className="label">{t("search.returnDate")}</dt><dd>{b.ret?.name}<br />{formatDateTime(b.ends_at, tz, lang)}</dd></div>
         </dl>
+        {docs.length ? (
+          <section className="mt-8">
+            <h2 className="label">{t("account.documents")}</h2>
+            <ul className="mt-2 space-y-2">{docs.map((d) => <li key={d.href}><a className="text-brand underline" href={d.href}>{d.label} (PDF)</a></li>)}</ul>
+          </section>
+        ) : null}
         {CUSTOMER_CANCELLABLE.includes(b.status) && cancellation.allowed ? (
           <div className="mt-8">
             {cancellation.feeMinor === 0

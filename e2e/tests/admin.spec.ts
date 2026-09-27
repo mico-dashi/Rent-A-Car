@@ -9,7 +9,7 @@ test.describe("owner dashboard", () => {
   test.beforeEach(async ({ page }) => adminSignIn(page, USERS.owner));
 
   test("every section renders without errors or missing translations", async ({ page }) => {
-    for (const s of SECTIONS) await visitClean(page, `${ADMIN}/t/${TENANT}${s}`);
+    for (const s of SECTIONS) await visitClean(page, `${ADMIN}/t/${TENANT}${s}`, { rawData: s === "/audit" });
   });
 
   test("creates a walk-in booking through the booking engine", async ({ page }) => {
@@ -80,7 +80,7 @@ test.describe("staff permissions", () => {
 test.describe("platform console", () => {
   test("super admin pages render", async ({ page }) => {
     await adminSignIn(page, USERS.admin);
-    for (const s of ["", "/tenants", "/plans", "/catalog", "/system", "/privacy", "/audit"]) await visitClean(page, `${ADMIN}/platform${s}`);
+    for (const s of ["", "/tenants", "/plans", "/catalog", "/system", "/privacy", "/audit"]) await visitClean(page, `${ADMIN}/platform${s}`, { rawData: s === "/audit" });
     await visitClean(page, `${ADMIN}/platform/tenants`);
     const href = await firstHref(page, /\/platform\/tenants\/[0-9a-f-]{36}$/);
     expect(href).toBeTruthy();
