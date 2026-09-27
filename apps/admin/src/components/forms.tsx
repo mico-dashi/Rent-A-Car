@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
-import { createTranslator } from "@rental/localization";
+import { createTranslator, translateError } from "@rental/localization";
 import type { LanguageCode } from "@rental/types";
 
 export type ActionResult =
@@ -47,7 +47,7 @@ export function ActionForm({
       ) : null}
       <div className="flex flex-wrap items-center gap-3">
         <Submit label={submitLabel} pendingLabel={t("common.loading")} variant={variant} />
-        {state && !state.ok ? <p role="alert" className="text-sm text-bad">{t(`admin.errors.${state.error}`) === `admin.errors.${state.error}` ? t(`errors.${state.error}`) : t(`admin.errors.${state.error}`)}</p> : null}
+        {state && !state.ok ? <p role="alert" className="text-sm text-bad">{translateError(lang, state.error)}</p> : null}
         {state?.ok ? <p role="status" className="text-sm text-ok">{state.message ?? successLabel ?? t("admin.common.saved")}</p> : null}
       </div>
     </form>

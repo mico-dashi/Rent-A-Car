@@ -5,7 +5,8 @@ import { Nav, type NavItem } from "@/components/nav";
 import { Badge } from "@/components/ui";
 import { getT } from "@/lib/i18n";
 import { can, getTenantContext, myMemberships } from "@/lib/session";
-import { setLanguage } from "../actions";
+import { userClient } from "@/lib/supabase/server";
+import { setLanguage } from "@/app/actions";
 
 const SECTIONS: [string, string, Permission][] = [
   ["", "overview", "tenant.read"],
@@ -36,6 +37,8 @@ export default async function TenantLayout({ children, params }: { children: Rea
   const ctx = await getTenantContext(tenant);
   const { t, lang } = await getT();
   const others = (await myMemberships()).filter((m) => m.tenant_slug !== ctx.slug);
+  const { data: onboarding } = await (await userClient()).from("tenant_settings").select("onboarding_completed_at,onboarding_step").eq("tenant_id", ctx.tenantId).maybeSingle();
+  const showOnboarding = can(ctx, "tenant.manage") && onboarding && !onboarding.onboarding_completed_at;
   const items: NavItem[] = SECTIONS.filter(([, , p]) => can(ctx, p)).map(([path, key]) => ({ href: `/t/${ctx.slug}${path}`, label: t(`admin.nav.${key}`) }));
 
   return (
@@ -60,6 +63,11 @@ export default async function TenantLayout({ children, params }: { children: Rea
         {ctx.status !== "ACTIVE" ? (
           <div role="status" className="border-b border-warn/40 bg-raised px-6 py-3 text-sm text-warn">
             <Badge status="PENDING_APPROVAL">{t(`admin.tenantStatus.${ctx.status}`)}</Badge> <span className="ml-2">{t(`admin.tenantStatusHelp.${ctx.status}`)}</span>
+          </div>
+        ) : null}
+        {showOnboarding ? (
+          <div className="border-b border-line bg-raised px-6 py-3 text-sm">
+            {t("admin.onboarding.banner", { pct: Math.round(((onboarding.onboarding_step - 1) / 11) * 100) })} <Link className="ml-2 font-semibold text-brand underline" href={`/t/${ctx.slug}/onboarding`}>{t("admin.onboarding.resume")}</Link>
           </div>
         ) : null}
         <main className="mx-auto max-w-[1280px] px-5 py-8 md:px-8">{children}</main>

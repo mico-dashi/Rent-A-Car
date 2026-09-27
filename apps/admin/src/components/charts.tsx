@@ -1,6 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { formatMoney } from "@rental/localization";
+import type { CurrencyCode, LanguageCode } from "@rental/types";
+
+/** Serializable value format (server components cannot pass functions to client components). */
+export type ValueFormat =
+  | { kind: "money"; currency: CurrencyCode; lang: LanguageCode; compact?: boolean }
+  | { kind: "count" }
+  | { kind: "percent" };
+
+function fmt(f: ValueFormat, v: number): string {
+  if (f.kind === "count") return String(Math.round(v));
+  if (f.kind === "percent") return `${(v * 100).toFixed(1)}%`;
+  if (f.compact) return new Intl.NumberFormat(f.lang, { notation: "compact", style: "currency", currency: f.currency }).format(v / 100);
+  return formatMoney(v, f.currency, f.lang);
+}
 
 /**
  * Minimal, dependency-free SVG charts. Single series, one hue (brand accent),
@@ -8,7 +23,7 @@ import { useState } from "react";
  * per-mark hover/focus tooltip. Text uses text tokens, never the series colour.
  */
 export function ColumnChart({ data, format, label, height = 220 }: {
-  data: { x: string; y: number; xLabel: string }[]; format: (v: number) => string; label: string; height?: number;
+  data: { x: string; y: number; xLabel: string }[]; format: ValueFormat; label: string; height?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const W = 720, H = height, padL = 56, padB = 28, padT = 12;
@@ -25,7 +40,7 @@ export function ColumnChart({ data, format, label, height = 220 }: {
         {ticks.map((tk) => (
           <g key={tk}>
             <line x1={padL} x2={W} y1={yOf(tk)} y2={yOf(tk)} stroke="var(--color-border)" strokeWidth={1} />
-            <text x={padL - 8} y={yOf(tk) + 4} textAnchor="end" fontSize={11} fill="var(--color-text-muted)">{format(tk)}</text>
+            <text x={padL - 8} y={yOf(tk) + 4} textAnchor="end" fontSize={11} fill="var(--color-text-muted)">{fmt(format, tk)}</text>
           </g>
         ))}
         {data.map((d, i) => {
@@ -47,20 +62,20 @@ export function ColumnChart({ data, format, label, height = 220 }: {
       </svg>
       {hover !== null && data[hover] ? (
         <figcaption className="pointer-events-none absolute right-2 top-2 rounded-md border border-line bg-raised px-3 py-2 text-xs shadow-lg" role="status">
-          <span className="text-muted">{data[hover]!.xLabel}</span> <strong className="ml-2">{format(data[hover]!.y)}</strong>
+          <span className="text-muted">{data[hover]!.xLabel}</span> <strong className="ml-2">{fmt(format, data[hover]!.y)}</strong>
         </figcaption>
       ) : null}
     </figure>
   );
 }
 
-export function BarList({ rows, format, label }: { rows: { key: string; label: string; value: number; sub?: string }[]; format: (v: number) => string; label: string }) {
+export function BarList({ rows, format, label }: { rows: { key: string; label: string; value: number; sub?: string }[]; format: ValueFormat; label: string }) {
   const max = Math.max(1, ...rows.map((r) => r.value));
   return (
     <ul aria-label={label} className="space-y-3">
       {rows.map((r) => (
-        <li key={r.key} title={`${r.label}: ${format(r.value)}`}>
-          <div className="mb-1 flex justify-between gap-3 text-sm"><span className="truncate">{r.label}{r.sub ? <span className="ml-2 text-xs text-muted">{r.sub}</span> : null}</span><span className="tabular-nums text-muted">{format(r.value)}</span></div>
+        <li key={r.key} title={`${r.label}: ${fmt(format, r.value)}`}>
+          <div className="mb-1 flex justify-between gap-3 text-sm"><span className="truncate">{r.label}{r.sub ? <span className="ml-2 text-xs text-muted">{r.sub}</span> : null}</span><span className="tabular-nums text-muted">{fmt(format, r.value)}</span></div>
           <div className="h-2 rounded-full bg-raised"><div className="h-2 rounded-full bg-brand" style={{ width: `${(r.value / max) * 100}%` }} /></div>
         </li>
       ))}

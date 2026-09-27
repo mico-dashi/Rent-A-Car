@@ -134,6 +134,7 @@ create table public.booking_price_lines (
   booking_id uuid not null,
   kind public.price_line_kind not null,
   label text not null,
+  label_params jsonb not null default '{}'::jsonb,
   quantity numeric(10,2) not null default 1 check (quantity > 0),
   unit_amount_minor bigint not null,
   amount_minor bigint not null,

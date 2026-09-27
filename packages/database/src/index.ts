@@ -26,6 +26,7 @@ export interface CreateBookingPayload {
   lines: {
     kind: PriceLine["kind"];
     label: string;
+    label_params?: Record<string, string | number>;
     quantity: number;
     unit_amount_minor: number;
     amount_minor: number;
@@ -57,6 +58,7 @@ export function toPayloadLines(lines: readonly PriceLine[]): CreateBookingPayloa
   return lines.map((l) => ({
     kind: l.kind,
     label: l.label,
+    label_params: l.labelParams ?? {},
     quantity: l.quantity,
     unit_amount_minor: l.unitAmountMinor,
     amount_minor: l.amountMinor,

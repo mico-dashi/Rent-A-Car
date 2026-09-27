@@ -33,7 +33,7 @@ function sign(payload) {
 
 const cors = {
   "access-control-allow-origin": "*",
-  "access-control-allow-headers": "authorization, apikey, content-type, x-client-info, x-upsert, accept-profile, content-profile, prefer, range, cache-control",
+  "access-control-allow-headers": "authorization, apikey, content-type, x-client-info, x-upsert, accept-profile, content-profile, prefer, range, cache-control, x-supabase-api-version, x-region",
   "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD",
   "access-control-expose-headers": "content-range, content-length",
 };
@@ -151,7 +151,7 @@ function ctype(f) {
 }
 
 http.createServer(async (req, res) => {
-  if (req.method === "OPTIONS") { res.writeHead(204, cors); return res.end(); }
+  if (req.method === "OPTIONS") { res.writeHead(204, { ...cors, "access-control-allow-headers": req.headers["access-control-request-headers"] ?? cors["access-control-allow-headers"] }); return res.end(); }
   const url = new URL(req.url, "http://localhost");
   try {
     if (url.pathname.startsWith("/rest/v1")) return proxy(req, res, PGRST_PORT, req.url.slice(8) || "/");

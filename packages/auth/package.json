@@ -11,6 +11,6 @@
     "lint": "eslint src",
     "test": "vitest run --passWithNoTests"
   },
-  "dependencies": {"@rental/domain": "workspace:*", "@rental/types": "workspace:*", "@supabase/supabase-js": "^2.46.1", "@supabase/ssr": "^0.5.2"},
+  "dependencies": {"@rental/domain": "workspace:*", "@rental/types": "workspace:*", "@supabase/supabase-js": "^2.46.1", "@supabase/ssr": "^0.7.0"},
   "devDependencies": {}
 }

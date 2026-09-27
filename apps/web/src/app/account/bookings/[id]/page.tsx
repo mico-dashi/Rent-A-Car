@@ -31,7 +31,7 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
     new Date(),
   );
   const lines: PriceLine[] = b.lines.map((l) => ({
-    kind: l.kind as PriceLine["kind"], label: String(l.label), quantity: Number(l.quantity), unitAmountMinor: Number(l.unit_amount_minor),
+    kind: l.kind as PriceLine["kind"], label: String(l.label), labelParams: (l.label_params ?? {}) as Record<string, string | number>, quantity: Number(l.quantity), unitAmountMinor: Number(l.unit_amount_minor),
     amountMinor: Number(l.amount_minor), isTaxable: Boolean(l.is_taxable),
   }));
 

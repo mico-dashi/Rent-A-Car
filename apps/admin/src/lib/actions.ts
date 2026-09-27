@@ -48,3 +48,28 @@ export const money = (fd: FormData, k: string): number | null => {
   return Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0"));
 };
 export const bool = (fd: FormData, k: string) => fd.get(k) === "on" || fd.get(k) === "true";
+
+import { revalidatePath } from "next/cache";
+import type { Permission } from "@rental/types";
+import { getTenantContext, type TenantContext } from "./session";
+
+/**
+ * Wrap a tenant-scoped server action: resolves the tenant from the slug in the
+ * form, pre-checks the permission (fast, friendly error), runs the mutation
+ * (which RLS / RPCs enforce again), maps errors, and revalidates the page.
+ */
+export async function tenantAction(fd: FormData, permission: Permission, fn: (ctx: TenantContext) => Promise<ActionResult | void>): Promise<ActionResult> {
+  try {
+    const slug = String(fd.get("_tenant") ?? "");
+    const ctx = await getTenantContext(slug);
+    if (!ctx.permissions.has(permission)) return { ok: false, error: "FORBIDDEN" };
+    const res = await fn(ctx);
+    const path = fd.get("_path");
+    if (typeof path === "string" && path.startsWith("/t/")) revalidatePath(path);
+    else revalidatePath(`/t/${slug}`, "layout");
+    return res ?? { ok: true };
+  } catch (e) {
+    if ((e as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) throw e;
+    return failure(e);
+  }
+}

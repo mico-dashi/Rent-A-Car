@@ -27,7 +27,6 @@ export default async function Overview({ params, searchParams }: { params: Promi
   const d = await loadDashboard(await userClient(), ctx.tenantId, period.from, period.to);
   const cur = d.currency as CurrencyCode;
   const fm = (v: number) => money(v, cur, lang);
-  const short = (v: number) => new Intl.NumberFormat(lang, { notation: "compact", style: "currency", currency: cur }).format(v / 100);
 
   return (
     <>
@@ -55,19 +54,19 @@ export default async function Overview({ params, searchParams }: { params: Promi
       </div>
       <div className="mt-8 grid gap-6 xl:grid-cols-2">
         <Card title={t("admin.overview.revenueOverTime")}>
-          <ColumnChart label={t("admin.overview.revenueOverTime")} format={short}
+          <ColumnChart label={t("admin.overview.revenueOverTime")} format={{ kind: "money", currency: cur, lang, compact: true }}
             data={d.series.map((s) => ({ x: s.day, y: s.revenueMinor, xLabel: s.day.slice(5) }))} />
         </Card>
         <Card title={t("admin.overview.bookingsOverTime")}>
-          <ColumnChart label={t("admin.overview.bookingsOverTime")} format={(v) => String(Math.round(v))}
+          <ColumnChart label={t("admin.overview.bookingsOverTime")} format={{ kind: "count" }}
             data={d.series.map((s) => ({ x: s.day, y: s.bookings, xLabel: s.day.slice(5) }))} />
         </Card>
         <Card title={t("admin.overview.utilizationByVehicle")}>
-          {d.byVehicle.length ? <BarList label={t("admin.overview.utilizationByVehicle")} format={pct}
+          {d.byVehicle.length ? <BarList label={t("admin.overview.utilizationByVehicle")} format={{ kind: "percent" }}
             rows={[...d.byVehicle].sort((a, b) => b.utilization - a.utilization).slice(0, 10).map((v) => ({ key: v.vehicleId, label: v.name, sub: v.plate, value: v.utilization }))} /> : <Empty>{t("common.empty")}</Empty>}
         </Card>
         <Card title={t("admin.overview.revenueByCategory")}>
-          {d.byCategory.length ? <BarList label={t("admin.overview.revenueByCategory")} format={fm}
+          {d.byCategory.length ? <BarList label={t("admin.overview.revenueByCategory")} format={{ kind: "money", currency: cur, lang }}
             rows={d.byCategory.map((c) => ({ key: c.category, label: t(`category.${c.category}`), sub: `${c.bookings}`, value: c.revenueMinor }))} /> : <Empty>{t("common.empty")}</Empty>}
         </Card>
       </div>

@@ -435,9 +435,9 @@ begin
   returning * into v_booking;
 
   for v_line in select * from jsonb_array_elements(p -> 'lines') loop
-    insert into public.booking_price_lines (tenant_id, booking_id, kind, label, quantity, unit_amount_minor, amount_minor,
+    insert into public.booking_price_lines (tenant_id, booking_id, kind, label, label_params, quantity, unit_amount_minor, amount_minor,
                                             is_taxable, source_rule_id, sort_order)
-    values (v_tenant, v_booking.id, (v_line ->> 'kind')::public.price_line_kind, v_line ->> 'label',
+    values (v_tenant, v_booking.id, (v_line ->> 'kind')::public.price_line_kind, v_line ->> 'label', coalesce(v_line -> 'label_params', '{}'::jsonb),
             coalesce((v_line ->> 'quantity')::numeric, 1), (v_line ->> 'unit_amount_minor')::bigint,
             (v_line ->> 'amount_minor')::bigint, coalesce((v_line ->> 'is_taxable')::boolean, true),
             (v_line ->> 'source_rule_id')::uuid, v_i);

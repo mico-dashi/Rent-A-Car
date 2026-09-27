@@ -37,7 +37,7 @@ export async function myBooking(db: SupabaseClient, tenantId: string, id: string
   if (error) throw new Error(error.message);
   if (!data) return null;
   const [b] = await hydrate(db, tenantId, [data as Record<string, unknown>]);
-  const { data: lines } = await db.from("booking_price_lines").select("kind,label,quantity,unit_amount_minor,amount_minor,is_taxable").eq("booking_id", id).order("sort_order");
+  const { data: lines } = await db.from("booking_price_lines").select("kind,label,label_params,quantity,unit_amount_minor,amount_minor,is_taxable").eq("booking_id", id).order("sort_order");
   return { ...b!, deposit_minor: Number(data.deposit_minor), due_now_minor: Number(data.due_now_minor), lines: (lines ?? []) as Record<string, unknown>[] };
 }
 

@@ -74,3 +74,17 @@ export function formatDateTime(iso: string | Date, timeZone: string, lang: Langu
 export function formatDate(iso: string | Date, timeZone: string, lang: LanguageCode): string {
   return new Intl.DateTimeFormat(localeFor(lang), { dateStyle: "medium", timeZone }).format(new Date(iso));
 }
+
+/** Display label for a stored price line (`label` is an i18n key or `extra:<code>`). */
+export function priceLineLabel(lang: LanguageCode, label: string, params: Record<string, string | number> | null | undefined, quantity = 1): string {
+  const p: Record<string, string | number> = { count: quantity, ...(params ?? {}) };
+  if (label.startsWith("extra:")) return String(p.name ?? label.slice(6).replace(/_/g, " "));
+  return translate(lang, label, p).replace(/\s*\{\w+\}\s*/g, " ").trim();
+}
+
+/** Localized message for a business error code; unknown codes fall back to a generic message. */
+export function translateError(lang: LanguageCode, code: string | null | undefined): string {
+  const key = `errors.${code ?? "INTERNAL_ERROR"}`;
+  const text = translate(lang, key);
+  return text === key ? translate(lang, "errors.INTERNAL_ERROR") : text;
+}

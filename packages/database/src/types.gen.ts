@@ -156,6 +156,7 @@ export type Database = {
           booking_id: string;
           kind: Database["public"]["Enums"]["price_line_kind"];
           label: string;
+          label_params: Json;
           quantity: number;
           unit_amount_minor: number;
           amount_minor: number;
@@ -171,6 +172,7 @@ export type Database = {
           booking_id: string;
           kind: Database["public"]["Enums"]["price_line_kind"];
           label: string;
+          label_params?: Json;
           quantity?: number;
           unit_amount_minor: number;
           amount_minor: number;
@@ -186,6 +188,7 @@ export type Database = {
           booking_id?: string;
           kind?: Database["public"]["Enums"]["price_line_kind"];
           label?: string;
+          label_params?: Json;
           quantity?: number;
           unit_amount_minor?: number;
           amount_minor?: number;

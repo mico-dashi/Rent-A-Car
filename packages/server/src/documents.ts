@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@rental/auth";
-import { formatDateTime, formatMoney, translate } from "@rental/localization";
+import { formatDateTime, formatMoney, priceLineLabel, translate } from "@rental/localization";
 import { BusinessError, type CurrencyCode, type LanguageCode } from "@rental/types";
 import { PdfWriter } from "./pdf";
 
@@ -54,7 +54,7 @@ export async function buildAgreementSnapshot(db: SupabaseClient, bookingId: stri
     one(db.from("branches").select("name,timezone").eq("id", b.pickup_branch_id).single()),
     one(db.from("branches").select("name").eq("id", b.return_branch_id).single()),
     db.from("driver_licenses").select("license_number,issuing_country,expires_on").eq("customer_id", b.customer_id).order("expires_on", { ascending: false }).limit(1).maybeSingle(),
-    db.from("booking_price_lines").select("label,amount_minor,kind,quantity").eq("booking_id", bookingId).order("sort_order"),
+    db.from("booking_price_lines").select("label,label_params,amount_minor,kind,quantity").eq("booking_id", bookingId).order("sort_order"),
     db.from("agreement_templates").select("version,body_md,language").eq("tenant_id", b.tenant_id).eq("is_active", true).order("version", { ascending: false }).limit(1).maybeSingle(),
   ]);
   const lang = ((c.preferred_language ?? t.default_language) === "sq" ? "sq" : "en") as LanguageCode;
@@ -81,10 +81,7 @@ export async function buildAgreementSnapshot(db: SupabaseClient, bookingId: stri
 }
 
 function labelFor(l: Row, lang: LanguageCode): string {
-  const label = l.label as string;
-  if (label.startsWith("extra:")) return label.slice(6).replace(/_/g, " ");
-  const out = translate(lang, label, { count: Number(l.quantity), days: Number(l.quantity), km: Number(l.quantity) });
-  return out === label ? String(l.kind) : out.replace(/\{\w+\}/g, "").trim();
+  return priceLineLabel(lang, l.label as string, (l.label_params ?? {}) as Record<string, string | number>, Number(l.quantity));
 }
 
 export async function renderAgreementPdf(snap: AgreementSnapshot, hash: string, signatures: { role: string; name: string; signedAt: string; png: Uint8Array }[] = []) {
@@ -198,7 +195,7 @@ export async function issueInvoice(db: SupabaseClient, bookingId: string, kind: 
   const [t, c, lines, num] = await Promise.all([
     one(db.from("tenants").select("legal_name,display_name,country_code,default_language").eq("id", b.tenant_id).single()),
     one(db.from("customers").select("first_name,last_name,email,address_line1,city,country_code,preferred_language").eq("id", b.customer_id).single()),
-    db.from("booking_price_lines").select("kind,label,quantity,amount_minor").eq("booking_id", bookingId).order("sort_order"),
+    db.from("booking_price_lines").select("kind,label,label_params,quantity,amount_minor").eq("booking_id", bookingId).order("sort_order"),
     db.rpc("next_document_number", { p_tenant: b.tenant_id, p_kind: kind }),
   ]);
   if (num.error) throw new Error(num.error.message);

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { translateError } from "@rental/localization";
 import { getT } from "@/lib/i18n";
 import { getUser } from "@/lib/session";
 import { userClient } from "@/lib/supabase/server";
@@ -6,7 +7,7 @@ import { userClient } from "@/lib/supabase/server";
 /** Staff invitation landing: sign in (or sign up) with the invited email, then accept. */
 export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const { t } = await getT();
+  const { t, lang } = await getT();
   const user = await getUser();
   if (!user) redirect(`/sign-in?next=${encodeURIComponent(`/invite/${token}`)}`);
   const db = await userClient();
@@ -18,7 +19,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   return (
     <div className="mx-auto max-w-md px-5 py-20 text-center">
       <h1 className="font-display text-2xl font-black">{t("admin.invite.title")}</h1>
-      <p className="mt-3 text-muted" role="alert">{t(`admin.errors.${error?.message ?? "INVITATION_INVALID"}`)}</p>
+      <p className="mt-3 text-muted" role="alert">{translateError(lang, error?.message ?? "INVITATION_INVALID")}</p>
     </div>
   );
 }
