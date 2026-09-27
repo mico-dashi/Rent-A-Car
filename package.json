@@ -1,0 +1,27 @@
+{
+  "name": "apex-rental-platform",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": { "node": ">=20.11" },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:db": "node scripts/db-test.mjs",
+    "db:reset:local": "node scripts/db-reset-local.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.14.0",
+    "@types/node": "^22.9.0",
+    "eslint": "^9.14.0",
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.14.0",
+    "vitest": "^2.1.5"
+  }
+}

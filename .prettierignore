@@ -1,0 +1,5 @@
+rental car company
+pnpm-lock.yaml
+**/.next
+**/dist
+supabase/migrations
