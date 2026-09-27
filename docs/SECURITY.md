@@ -22,19 +22,23 @@
 | Errors | Stable error codes to clients; stack traces logged server-side only | `apps/web/src/lib/http.ts`, `app/error.tsx` |
 | Open redirects | Sign-in and callback accept only same-site relative paths | `sign-in/page.tsx`, `auth/callback` |
 | Definer functions | Every `SECURITY DEFINER` function pins `search_path` (CI-tested); helpers in the non-exposed `app` schema | `parity.test.ts` |
+| Dashboard MFA | Owners, tenant admins and platform admins must enrol TOTP (`ADMIN_MFA_POLICY=privileged`, the production default); anyone enrolled must pass AAL2 each session. Enrolment and verification run server-side | `apps/admin/src/lib/mfa.ts`, `e2e/tests/mfa.spec.ts` |
+| Private documents | Agreements, invoices, inspection photos and IDs are served only through short-lived signed URLs minted after an ownership or permission check (customer RLS read, or staff permission per bucket) | `apps/web/src/app/account/documents`, `apps/admin/src/app/t/[tenant]/documents/route.ts` |
+| Signatures | Each signature is bound to the SHA-256 of the exact agreement content; a changed agreement rejects old signatures (`SIGNATURE_CONTENT_MISMATCH`) | migration 15, `@rental/server/documents.ts` |
+| Offline sync | Stale inspection edits raise `VERSION_CONFLICT` and are parked on the device for the user, never overwritten | migrations 08, 17; `@rental/api-client/inspections.ts` |
+| Cron | Scheduled routes require `Bearer CRON_SECRET` (constant-time compare); closed when the secret is unset | `apps/web/src/lib/cron.ts` |
+| Privacy | Data export, deletion requests, and platform-side anonymisation (blocked while rentals are active) | migration 16 |
 | AI damage | Advisory only; stored with confidence and review status; cannot produce a charge | `damage_ai_assessments` |
 | Employee monitoring | No location tracking or surveillance features; activity is limited to operational audit events | by design |
 
 ## Open items before production
 
 1. **Distributed rate limiting.** Replace the in-memory limiter with Redis or Upstash (`RATE_LIMIT_REDIS_URL`) when running more than one instance. Also add Supabase Auth rate limits and CAPTCHA on sign-up.
-2. **MFA enforcement.** TOTP is enabled, but owners and admins are not yet *required* to enrol (`profiles.mfa_required` exists). Add an AAL2 check for the owner dashboard.
-3. **CSP nonces.** `script-src` currently allows `'unsafe-inline'` for Next.js hydration. Move to nonce-based CSP.
-4. **Signed URL service.** Add a server route that issues short-lived signed URLs for private documents after an authorization check.
-5. **Identity verification adapters** (Stripe Identity, Persona or Veriff) are not implemented yet. Manual verification by staff with `customers.documents` works.
-6. **Sentry wiring.** The DSN variables exist, but the SDK is not initialised yet.
-7. **Data retention job.** `tenant_settings.data_retention_days` is stored but not enforced yet.
-8. **Penetration test** and dependency scanning (Dependabot, `pnpm audit`) in CI.
+2. **CSP nonces.** `script-src` currently allows `'unsafe-inline'` for Next.js hydration. Move to nonce-based CSP.
+3. **Identity verification adapters** (Stripe Identity, Persona or Veriff) are not implemented yet. Manual verification by staff with `customers.documents` works.
+4. **Sentry wiring.** The DSN variables exist, but the SDK is not initialised yet.
+5. **Data retention job.** `tenant_settings.data_retention_days` is stored but not enforced yet.
+6. **Penetration test** and dependency scanning (Dependabot, `pnpm audit`) in CI.
 
 ## Reporting
 

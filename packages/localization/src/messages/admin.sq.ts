@@ -323,6 +323,6 @@ export const adminSq: Messages["admin"] = {
     commission: { NONE: "Asnjë", PERCENTAGE: "Përqindje", FIXED: "Fiks për rezervim", CUSTOM: "I personalizuar" },
   },
   home: { createBusiness: "Krijo një biznes qiraje", platform: "Konsola e platformës", title: "Bizneset tuaja" },
-  signIn: { mfaCode: "Kodi i vërtetimit", title: "Hyni në panelin tuaj" },
+  signIn: { mfaTitle: "Verifikimi me dy hapa", mfaChallengeHint: "Futni kodin 6-shifror nga aplikacioni i vërtetimit.", mfaEnrollHint: "Roli juaj kërkon verifikim me dy hapa. Konfiguroni një aplikacion vërtetimi për të vazhduar.", mfaCode: "Kodi i vërtetimit", title: "Hyni në panelin tuaj" },
   invite: { title: "Bashkohu me ekipin" },
 };

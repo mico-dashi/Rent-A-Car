@@ -44,7 +44,7 @@ The tenant starts as `PENDING_APPROVAL`, unless `platform_settings.tenants_auto_
 
 **By a platform admin.** Do the same as a platform admin, or insert the rows with the service role.
 
-The onboarding wizard tracks progress in `tenant_settings.onboarding_step` and `onboarding_data` (save and continue later). The wizard UI is not built yet.
+The 11-step onboarding wizard in the dashboard (`/onboarding` for step 1, then `/t/<slug>/onboarding`) tracks progress in `tenant_settings.onboarding_step` and `onboarding_data`, so owners can save and continue later.
 
 ## Universal app tenant discovery
 

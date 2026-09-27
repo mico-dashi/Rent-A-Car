@@ -28,7 +28,7 @@
    - `setup_intent.succeeded`
    - `account.updated` (Connect)
 4. For local testing, run `stripe listen --forward-to localhost:3000/api/v1/webhooks/stripe`.
-5. Link a tenant: insert or update its `tenant_payment_accounts` row with the connected account id. The Connect onboarding link flow is part of onboarding step 7 and is not built yet.
+5. Link a tenant: the owner clicks **Payments → Connect Stripe** in the dashboard (also onboarding step 7). That creates an Express connected account and sends the owner through Stripe-hosted onboarding; `account.updated` webhooks keep `charges_enabled`/`payouts_enabled` in sync.
 
 If Stripe is not configured, bookings that need payment are refused with `PAYMENTS_NOT_CONFIGURED`. Nothing is marked paid without a verified webhook.
 
@@ -52,7 +52,7 @@ If Stripe is not configured, bookings that need payment are refused with `PAYMEN
 | Strategy | When it applies | What happens |
 |---|---|---|
 | `AUTHORIZE_NOW` | Pickup is near and the whole rental fits inside the authorization window | The deposit is authorized immediately |
-| `SAVE_METHOD_AND_AUTHORIZE_LATER` | Anything else | The rental PaymentIntent uses `setup_future_usage=off_session`. A scheduled job creates a manual-capture PaymentIntent at `authorize_after`. That job is **not built yet** |
+| `SAVE_METHOD_AND_AUTHORIZE_LATER` | Anything else | The rental PaymentIntent uses `setup_future_usage=off_session`. The scheduler tick (`authorizeDueDeposits`) creates a manual-capture PaymentIntent at `authorize_after` with the saved card |
 
 At return:
 - Staff confirm the proposed charges from `computeReturnCharges()` (mileage, fuel or battery, late return) and any damage decisions.
@@ -63,7 +63,7 @@ At return:
 
 - Every refund creates a `refunds` row with an idempotency key. The trigger `guard_refund_total` locks the payment row and rejects any refund that would exceed the captured amount.
 - The provider refund uses the same idempotency key, and the webhook finalizes its status.
-- Customer cancellations compute `refundable_minor = paid − refunded − fee` in `transition_booking`. Issuing that refund automatically is part of the cancellation job (not built yet). Until then, staff with `payments.refund` can issue it.
+- Customer cancellations compute `refundable_minor = paid − refunded − fee` in `transition_booking`. The scheduler tick (`refundCancelledBookings`) issues that refund against the rental payments with a per-payment idempotency key, so a retry never refunds twice. Staff with `payments.refund` can also refund manually from the booking.
 
 ## Webhook guarantees
 

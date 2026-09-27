@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import type { Permission, RoleKey, TenantStatus, CurrencyCode } from "@rental/types";
+import { enforceMfa } from "./mfa";
 import { userClient } from "./supabase/server";
 
 export interface TenantContext {
@@ -57,6 +58,7 @@ export const getTenantContext = cache(async (slug: string): Promise<TenantContex
   const m = (await myMemberships()).find((x) => x.tenant_slug === slug);
   const admin = await isPlatformAdmin();
   if (!m && !admin) notFound();
+  await enforceMfa({ privileged: admin || m?.role === "TENANT_OWNER" || m?.role === "TENANT_ADMIN", next: `/t/${slug}` });
   const { data: tenant } = await db.from("tenants").select("id,slug,display_name,status,base_currency").eq("slug", slug).maybeSingle();
   if (!tenant) notFound();
   const { data: settings } = await db.from("tenant_settings").select("timezone").eq("tenant_id", tenant.id).maybeSingle();

@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
 
 export const ADMIN = process.env.ADMIN_URL ?? "http://localhost:3001";
@@ -61,4 +62,17 @@ export async function webSignIn(page: Page, email: string, next = "/account/book
 export function webApi(path: string, host = new URL(WEB).host): { url: string; headers: Record<string, string> } {
   const u = new URL(WEB);
   return { url: `${u.protocol}//localhost:${u.port || 80}${path}`, headers: { host } };
+}
+
+/** RFC 6238 TOTP (SHA-1, 30 s, 6 digits) for driving authenticator-app flows in tests. */
+export function totp(secretBase32: string, at = Date.now()): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const ch of secretBase32.replace(/=+$/, "").toUpperCase()) bits += alphabet.indexOf(ch).toString(2).padStart(5, "0");
+  const key = Buffer.from(bits.match(/.{8}/g)!.map((b) => parseInt(b, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 30_000)));
+  const h = createHmac("sha1", key).update(counter).digest();
+  const o = h[h.length - 1]! & 0xf;
+  return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, "0");
 }

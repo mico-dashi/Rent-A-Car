@@ -321,6 +321,6 @@ export const adminEn = {
     commission: { NONE: "None", PERCENTAGE: "Percentage", FIXED: "Fixed per booking", CUSTOM: "Custom" },
   },
   home: { createBusiness: "Create a rental business", platform: "Platform console", title: "Your businesses" },
-  signIn: { mfaCode: "Authentication code", title: "Sign in to your dashboard" },
+  signIn: { mfaTitle: "Two-factor authentication", mfaChallengeHint: "Enter the 6-digit code from your authenticator app.", mfaEnrollHint: "Your role requires two-factor authentication. Set up an authenticator app to continue.", mfaCode: "Authentication code", title: "Sign in to your dashboard" },
   invite: { title: "Join the team" },
 } as const;

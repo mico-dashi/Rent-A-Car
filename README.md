@@ -2,7 +2,17 @@
 
 A multi-tenant platform that rental companies can license. It gives each company a branded booking website on a platform subdomain or its own domain. Customers can also book through one universal iOS/Android app, or through optional branded app builds. Behind this sit a booking engine that cannot double-book, a rule-based pricing engine, Stripe payments with deposits, and tenant isolation enforced by PostgreSQL Row Level Security.
 
-> **Status:** early build. The database, security model, booking/pricing engines, customer storefront and mobile white-label foundation are implemented and tested. The owner/staff/super-admin dashboards, PDF agreements, analytics and E2E tests are **not built yet**. See the phase-by-phase status in [docs/ARCHITECTURE.md#g](docs/ARCHITECTURE.md#g-implementation-roadmap--status). Do not deploy to production yet.
+> **Status:** feature-complete and tested locally, not yet production-proven. The following are implemented and covered by unit, database, stack and browser E2E tests:
+> - the database and security model, and the booking, pricing and payment engines
+> - the tenant storefront, the owner/staff dashboard and the platform console
+> - agreements and invoices as PDFs, scheduled jobs, analytics
+> - the customer and staff mobile app, including offline inspections
+>
+> Before production:
+> - exercise Stripe, email, push and SMS with real (test) credentials
+> - resolve the open items in [SECURITY.md](docs/SECURITY.md#open-items-before-production)
+>
+> Phase-by-phase status: [docs/ARCHITECTURE.md#g](docs/ARCHITECTURE.md#g-implementation-roadmap--status).
 
 | Doc | Contents |
 |---|---|
@@ -18,7 +28,9 @@ A multi-tenant platform that rental companies can license. It gives each company
 ## Prerequisites
 
 - Node.js ≥ 20.11 (CI uses 22) and pnpm 10 (`corepack enable`)
-- For the full local stack: Docker plus the [Supabase CLI](https://supabase.com/docs/guides/cli)
+- For the full local stack, either:
+  - Docker plus the [Supabase CLI](https://supabase.com/docs/guides/cli), or
+  - the Docker-free stack in `tools/local-stack`, which needs only PostgreSQL 15+ (see [TESTING.md](docs/TESTING.md#running-the-local-stack-no-docker))
 - To run only the DB test suite: any PostgreSQL 15+ server with `psql`. Docker is not needed.
 - Mobile: Expo tooling via `npx expo`, an [EAS](https://expo.dev/eas) account for store builds, Xcode (iOS) and Android Studio (Android) for local native runs
 
@@ -27,6 +39,7 @@ A multi-tenant platform that rental companies can license. It gives each company
 ```bash
 pnpm install
 cp .env.example apps/web/.env.local       # fill in values, see "Environment variables"
+cp .env.example apps/admin/.env.local
 cp .env.example apps/mobile/.env
 ```
 
@@ -67,7 +80,15 @@ pnpm --filter @rental/web dev          # http://localhost:3000
 
 Tenants are resolved from the `Host` header. In development, plain `localhost` serves `DEV_TENANT_SLUG` (default `apex-drive`). `http://apex-drive.localhost:3000` also works, exactly like a production subdomain would. Unknown hosts return 404.
 
-### 3. Mobile
+### 3. Dashboard (owners, staff, platform admins)
+
+```bash
+pnpm --filter @rental/admin dev        # http://localhost:3001
+```
+
+Sign in as `owner@apexdrive.demo` for the Apex Drive dashboard (`/t/apex-drive`), or as `admin@platform.demo` for the platform console (`/platform`). Businesses that sign up start at `/onboarding`. In production, owners and admins must set up an authenticator app on first sign-in.
+
+### 4. Mobile
 
 ```bash
 cd apps/mobile
@@ -75,14 +96,17 @@ npx expo start                          # universal app (APP_VARIANT=universal)
 APP_VARIANT=apex-drive npx expo start   # branded build of the demo tenant
 ```
 
-In the universal app, enter tenant code `APEX01`, or open `rentalplatform://t/apex-drive`.
+In the universal app, enter tenant code `APEX01`, or open `rentalplatform://t/apex-drive`. Sign in as `staff@apexdrive.demo` to see the **Staff** tab (today's pickups and returns, QR scan, offline inspections).
 
 ### Useful commands
 
 ```bash
 pnpm turbo run lint typecheck test      # all packages
 pnpm test:db                            # DB integration suite (needs DATABASE_URL to a Postgres server)
+pnpm test:stack                         # server services against the local stack
+pnpm test:e2e                           # Playwright, with the stack, web and admin running
 pnpm --filter @rental/web build
+pnpm --filter @rental/admin build
 node apps/mobile/scripts/check-variants.mjs
 ```
 

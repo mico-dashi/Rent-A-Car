@@ -19,7 +19,7 @@ A multi-tenant, white-label car-rental platform ("Shopify for rental companies")
 flowchart LR
   subgraph Clients
     W["Tenant storefronts<br/>client.myplatform.com / clientdomain.com<br/>(apps/web)"]
-    A["Owner / staff / super-admin dashboards<br/>(apps/admin — planned)"]
+    A["Owner / staff / super-admin dashboards<br/>(apps/admin)"]
     M["Universal iOS + Android app<br/>+ optional branded builds<br/>(apps/mobile, Expo)"]
   end
 
@@ -85,7 +85,7 @@ flowchart LR
 │   ├── mobile/              Expo Router app (universal + white-label builds)
 │   │   ├── app.config.ts    selects clients/<APP_VARIANT>/config.ts
 │   │   └── eas.json         development / preview / production (+ per-client) profiles
-│   └── admin/               (planned) owner, staff and super-admin dashboards
+│   └── admin/               Next.js: owner/staff dashboard (/t/<slug>) and platform console (/platform)
 ├── clients/                 white-label mobile build configs (one folder per client)
 ├── packages/
 │   ├── types/               shared enums, models, business error codes
@@ -100,6 +100,7 @@ flowchart LR
 │   ├── localization/        en + sq catalogues, money and timezone formatting
 │   ├── design-tokens/       palette, typography, WCAG-checked tenant themes
 │   ├── ui/                  shared web UI recipes
+│   ├── server/              trusted server services: booking, payments, deposits, refunds, PDFs, jobs
 │   ├── config/              environment validation
 │   └── testing/             DB test harness (impersonate anon/user/service), demo IDs
 ├── supabase/
@@ -107,7 +108,9 @@ flowchart LR
 │   ├── seed.sql             Apex Drive Rentals demo tenant (dev/preview only)
 │   ├── tests/shim/          plain-Postgres emulation of Supabase auth/storage for CI
 │   └── config.toml          Supabase CLI config
-├── scripts/                 db-reset-local.sh, db-test.sh
+├── e2e/                     Playwright suite (storefront, dashboards, MFA, cron) against the local stack
+├── tools/local-stack/       Docker-free Supabase-compatible stack (GoTrue + PostgREST + storage emulator)
+├── scripts/                 db-reset-local.sh, db-test.sh, gen-db-types.mjs
 ├── docs/                    this documentation
 └── .github/workflows/       ci.yml, deploy-database.yml, mobile-build.yml
 ```
@@ -323,28 +326,28 @@ Legend: ✅ done and tested · 🟡 partial · ⬜ not started. "Done" means imp
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Monorepo (pnpm + Turborepo), strict TS, lint, CI | ✅ |
-| 2 | Database schema: 78 tables, constraints, indexes, migrations | ✅ |
-| 3 | Auth / tenant / RBAC / RLS + column guards | ✅ (DB); 🟡 MFA enforcement UI |
-| 4 | Design system (tokens, WCAG-checked tenant theming) | ✅ tokens; 🟡 component library |
-| 5 | Tenant onboarding | 🟡 `create_tenant` RPC + step tracking; wizard UI ⬜ |
-| 6 | Branches and fleet | ✅ schema/RLS; admin CRUD UI ⬜ |
-| 7 | Pricing engine | ✅ |
+| 2 | Database schema: 79 tables, constraints, indexes, 17 migrations | ✅ |
+| 3 | Auth / tenant / RBAC / RLS + column guards; dashboard MFA (TOTP, AAL2 gate) | ✅ |
+| 4 | Design system (tokens, WCAG-checked tenant theming) | ✅ tokens + web/admin recipes + mobile primitives |
+| 5 | Tenant onboarding (11-step wizard, save and resume) | ✅ |
+| 6 | Branches and fleet (CRUD, images, documents, classes, transfers, QR codes) | ✅ |
+| 7 | Pricing engine + rule management UI | ✅ |
 | 8 | Availability (exclusion constraint, buffers, holds, class capacity) | ✅ |
-| 9 | Search and vehicle pages | ✅ web; 🟡 mobile (fleet list) |
-| 10 | Booking engine (create, transition, assign, cancel) | ✅ |
-| 11 | Payments (Stripe intents, webhooks, refunds guard) | 🟡 needs Stripe test keys to exercise live; deposit authorization job ⬜ |
-| 12 | Customer booking management | ✅ web (list, detail, cancel); mobile ⬜ |
-| 13 | Owner dashboard | ⬜ |
-| 14 | Staff pickup and return | 🟡 DB gates, inspection sync guards, return-charge engine; UI ⬜ |
-| 15 | Agreements and signatures | 🟡 schema + content hashing; PDF generation ⬜ |
-| 16 | Maintenance and damages | ✅ DB (auto-blocking, human-decision guards); UI ⬜ |
-| 17 | Notifications and messaging | 🟡 templates, renderer, adapters, RLS; dispatcher job ⬜ |
-| 18 | Analytics | ⬜ |
-| 19 | Super admin | 🟡 DB privileges; UI ⬜ |
-| 20 | Website and custom domains | ✅ storefront + host resolution; 🟡 domain verification job ⬜ |
-| 21 | Universal mobile tenant routing | ✅ code + deep links; location discovery ⬜ |
+| 9 | Search and vehicle pages | ✅ web + mobile |
+| 10 | Booking engine (create, modify, transition, assign, cancel; staff walk-in bookings) | ✅ |
+| 11 | Payments (Stripe intents, Connect onboarding, webhooks, deposits, refunds, balance charges) | ✅ code + tests against a provider test double; 🟡 not yet exercised with live Stripe test keys |
+| 12 | Customer booking management (list, detail, cancel, documents, data export, deletion request) | ✅ web + mobile |
+| 13 | Owner dashboard | ✅ |
+| 14 | Staff pickup and return (web + mobile offline inspections, QR scan) | ✅ |
+| 15 | Agreements and signatures (PDF, content-hash-bound signatures, invoices) | ✅ |
+| 16 | Maintenance and damages (incl. advisory AI review) | ✅ |
+| 17 | Notifications and messaging (queue, dispatcher, email/push/SMS adapters, inbox) | ✅ code; 🟡 providers need real keys |
+| 18 | Analytics (dashboard KPIs, charts, CSV exports) | ✅ |
+| 19 | Super admin (tenants, plans, flags, catalog, system health, privacy, audit) | ✅ |
+| 20 | Website and custom domains (content, legal pages, DNS verification job) | ✅ |
+| 21 | Universal mobile tenant routing | ✅ code, deep links; ⬜ location-based discovery |
 | 22 | White-label build configuration | ✅ |
-| 23 | Testing | 🟡 unit + DB integration ✅; E2E ⬜ |
+| 23 | Testing (unit, DB integration, stack services, Playwright E2E) | ✅; ⬜ native mobile UI tests (Maestro/Detox) |
 | 24 | Security hardening | 🟡 see [SECURITY.md](SECURITY.md) open items |
 | 25 | Deployment | 🟡 docs + workflows; no environment provisioned |
 

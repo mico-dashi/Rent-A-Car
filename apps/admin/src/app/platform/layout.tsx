@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { Nav } from "@/components/nav";
 import { getT } from "@/lib/i18n";
+import { enforceMfa } from "@/lib/mfa";
 import { isPlatformAdmin, requireUser } from "@/lib/session";
 
 export default async function PlatformLayout({ children }: { children: ReactNode }) {
   await requireUser();
   if (!(await isPlatformAdmin())) notFound();
+  await enforceMfa({ privileged: true, next: "/platform" });
   const { t } = await getT();
   const items = [["", "overview"], ["/tenants", "tenants"], ["/plans", "plans"], ["/catalog", "catalog"], ["/system", "system"], ["/privacy", "privacy"], ["/audit", "audit"]]
     .map(([p, k]) => ({ href: `/platform${p}`, label: t(`admin.platform.nav.${k}`) }));

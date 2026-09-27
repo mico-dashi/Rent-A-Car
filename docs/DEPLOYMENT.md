@@ -24,7 +24,10 @@
    - the workflow runs `supabase db push --dry-run`, then `supabase db push`
 4. **Never run `seed.sql` in production.** Reference data ships in migration 13.
 5. Set `platform_settings.root_domain` to your platform domain.
-6. Schedule the hold-release job. Either call `POST /api/v1/cron/release-holds` every minute with `Authorization: Bearer $CRON_SECRET` (Vercel Cron, GitHub Actions or a scheduler), or use `pg_cron` to run `select public.release_expired_holds();`.
+6. Schedule the jobs (both accept GET or POST with `Authorization: Bearer $CRON_SECRET`; `apps/web/vercel.json` declares them for Vercel Cron, which sends that header automatically when `CRON_SECRET` is set):
+   - `/api/v1/cron/release-holds` every minute: releases expired unpaid holds.
+   - `/api/v1/cron/tick` every 5 minutes: overdue/no-show housekeeping and reminders, deposit authorisations, cancellation refunds, notification delivery (email/push/SMS) and custom-domain verification. It returns `207` with per-job results when any job failed; each job is idempotent and isolated.
+   - Vercel Hobby only allows daily crons; use Pro, or call the routes from GitHub Actions or another scheduler.
 
 ## Web
 
@@ -35,16 +38,25 @@ Vercel is recommended. Any Node 22 host that runs `next start` also works.
 - **Domains:** add the apex `myplatform.com` and the wildcard `*.myplatform.com`. Vercel issues wildcard certificates when its nameservers are used.
 - **Promotion:** deploy previews for pull requests, and promote to production only after CI (lint, typecheck, unit, DB integration, build) is green.
 
+## Admin dashboard
+
+`apps/admin` is a separate Next.js app for owners, staff and platform admins. Deploy it as its own project (for example `admin.myplatform.com`), never on tenant domains.
+
+- **Root directory:** `apps/admin`. Build command: `pnpm --filter @rental/admin build`.
+- **Environment variables:** the Supabase and Stripe variables from `.env.example`, `NEXT_PUBLIC_ADMIN_URL`, and `ADMIN_MFA_POLICY` (leave unset for the production default, `privileged`).
+- Add `https://admin.myplatform.com/auth/callback` to the Supabase Auth redirect allow-list.
+- Owners, tenant admins and platform admins are sent to `/mfa` to enrol TOTP on first sign-in, and must pass it on every new session.
+
 ## Custom domains
 
-1. The tenant owner adds `rentals.example.com` in the dashboard (dashboard not built yet), which inserts a row into `tenant_domains`. The owner then creates two DNS records:
+1. The tenant owner adds `rentals.example.com` in the dashboard (**Website → Domains**), which inserts a row into `tenant_domains`. The owner then creates two DNS records:
    - `CNAME rentals.example.com → cname.myplatform.com` (or `A` records for an apex domain)
    - `TXT _rental-verify.rentals.example.com → <verification_token>`
-2. The platform verification job checks the TXT record. On success it:
-   - sets `status = 'VERIFIED'` and `verified_at` using the service role (tenants cannot set these themselves, because a DB guard stops them)
-   - adds the domain to the hosting provider, for example through the Vercel Domains API, which issues TLS
+2. The verification job (part of `/api/v1/cron/tick`) checks the TXT record. On success it:
+   - adds the domain to the hosting provider through the Vercel Domains API (`VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, optional `VERCEL_TEAM_ID`), which issues TLS
+   - then sets `status = 'VERIFIED'` and `verified_at` using the service role (tenants cannot set these themselves, because a DB guard stops them)
 
-   The job is not built yet. Until then, a platform admin can perform these steps manually.
+   Domains still unverified after 14 days are marked `FAILED`. Without Vercel credentials the job only verifies DNS; attach the domain to your host manually. Platform admins can also mark a domain verified in **Platform → Tenants**.
 3. Add `https://rentals.example.com/auth/callback` to the Supabase Auth redirect allow-list.
 4. `resolve_tenant` now serves the tenant on that host. Canonical URLs and the sitemap use the domain marked `is_primary`.
 
@@ -92,9 +104,10 @@ CI: **Mobile builds (EAS)** workflow (`workflow_dispatch`) with an `EXPO_TOKEN` 
 - [ ] Auth: SMTP, redirect allow-list, CAPTCHA, providers, MFA enforced for owners and admins
 - [ ] `root_domain` set; wildcard DNS and TLS working; unknown hosts return 404
 - [ ] Stripe live keys with `PAYMENTS_MODE=live`; webhook endpoint and secret set; Connect accounts onboarded; test live payment and refund
-- [ ] Hold-release cron running; `CRON_SECRET` rotated
+- [ ] `release-holds` and `tick` crons running; `CRON_SECRET` rotated; email (Resend), push (Expo) and optional SMS (Twilio) configured
 - [ ] Distributed rate limiting (Redis) configured
 - [ ] Sentry initialised; alerts on webhook `FAILED` events and 5xx rates
 - [ ] Legal: each tenant has published terms and privacy text (`tenant_settings.legal_*`); cookie consent where required
 - [ ] Security open items in SECURITY.md resolved or accepted
-- [ ] E2E suites green (not built yet)
+- [ ] E2E suite green against staging (`pnpm test:e2e` with `ADMIN_URL`/`WEB_URL` pointed at it)
+- [ ] `ADMIN_MFA_POLICY` left at the production default (`privileged`)
