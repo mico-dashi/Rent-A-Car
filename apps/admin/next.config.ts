@@ -11,7 +11,7 @@ const csp = [
   `img-src 'self' data: blob: ${supabaseUrl} https://*.stripe.com https://maps.gstatic.com https://maps.googleapis.com`,
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseUrl} ${supabaseUrl.replace("https://", "wss://")} https://api.stripe.com https://maps.googleapis.com`,
-  "frame-src https://js.stripe.com https://hooks.stripe.com",
+  "frame-src 'none'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -23,7 +23,7 @@ const config: NextConfig = {
   poweredByHeader: false,
   transpilePackages: [
     "@rental/api-client", "@rental/auth", "@rental/config", "@rental/database", "@rental/design-tokens",
-    "@rental/domain", "@rental/localization", "@rental/payments", "@rental/types", "@rental/validation", "@rental/server",
+    "@rental/domain", "@rental/localization", "@rental/payments", "@rental/types", "@rental/validation", "@rental/server", "@rental/ui", "@rental/notifications", "@rental/maps",
   ],
   images: {
     remotePatterns: supabaseUrl ? [{ protocol: "https", hostname: new URL(supabaseUrl).hostname, pathname: "/storage/v1/**" }] : [],

@@ -79,6 +79,16 @@ export const en = {
     paymentTitle: "Payment", success: "Payment received — your booking will be confirmed in a moment.",
   },
   account: { bookings: "My bookings", cancelBooking: "Cancel booking", cancelConfirm: "Cancel this booking?", cancelFee: "Cancellation fee: {amount}", reference: "Reference" },
+  documents: {
+    agreementTitle: "Vehicle rental agreement", customer: "Customer", staff: "Company representative", dateOfBirth: "Date of birth",
+    license: "Driving licence", expires: "expires", vehicle: "Vehicle", plate: "Registration", rentalPeriod: "Rental period",
+    pickup: "Pickup", return: "Return", charges: "Charges", total: "Total", deposit: "Security deposit (authorised)",
+    rules: "Rental rules", mileage: "Mileage", unlimited: "Unlimited", extraKm: "extra", fuel: "Fuel",
+    fuelPolicy: { FULL_TO_FULL: "Full to full", SAME_TO_SAME: "Same to same", PREPAID: "Prepaid" },
+    cancellation: "Free cancellation / late fee", minAge: "Minimum driver age", terms: "Terms and conditions",
+    signatures: "Signatures", unsigned: "Not yet signed", integrity: "Document integrity",
+    invoice: "Invoice", receipt: "Receipt", issued: "Issued", booking: "Booking", subtotal: "Subtotal", tax: "Tax", paid: "Paid",
+  },
   errors: {
     VEHICLE_UNAVAILABLE: "Sorry — this car was just booked for those dates. Please choose another.",
     CLASS_SOLD_OUT: "This category is sold out for those dates.",

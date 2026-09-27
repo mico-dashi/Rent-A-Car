@@ -81,6 +81,16 @@ export const sq: Messages = {
     paymentTitle: "Pagesa", success: "Pagesa u mor — rezervimi do të konfirmohet pas pak.",
   },
   account: { bookings: "Rezervimet e mia", cancelBooking: "Anulo rezervimin", cancelConfirm: "Ta anulojmë këtë rezervim?", cancelFee: "Tarifa e anulimit: {amount}", reference: "Referenca" },
+  documents: {
+    agreementTitle: "Kontratë qiraje automjeti", customer: "Klienti", staff: "Përfaqësuesi i kompanisë", dateOfBirth: "Data e lindjes",
+    license: "Patenta", expires: "skadon", vehicle: "Automjeti", plate: "Targa", rentalPeriod: "Periudha e qirasë",
+    pickup: "Marrja", return: "Kthimi", charges: "Tarifat", total: "Totali", deposit: "Depozita e sigurisë (e autorizuar)",
+    rules: "Rregullat e qirasë", mileage: "Kilometrazhi", unlimited: "I pakufizuar", extraKm: "shtesë", fuel: "Karburanti",
+    fuelPolicy: { FULL_TO_FULL: "Plot në plot", SAME_TO_SAME: "Njësoj si në marrje", PREPAID: "I parapaguar" },
+    cancellation: "Anulim falas / tarifë vonese", minAge: "Mosha minimale e shoferit", terms: "Kushtet",
+    signatures: "Nënshkrimet", unsigned: "Ende i panënshkruar", integrity: "Integriteti i dokumentit",
+    invoice: "Faturë", receipt: "Mandat", issued: "Lëshuar", booking: "Rezervimi", subtotal: "Nëntotali", tax: "Taksa", paid: "Paguar",
+  },
   errors: {
     VEHICLE_UNAVAILABLE: "Na vjen keq — kjo makinë sapo u rezervua për këto data. Zgjidhni një tjetër.",
     CLASS_SOLD_OUT: "Kjo kategori është e zënë për këto data.",

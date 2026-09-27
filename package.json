@@ -14,7 +14,11 @@
     "test:db": "bash scripts/db-test.sh",
     "db:reset:local": "bash scripts/db-reset-local.sh",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:types": "node scripts/gen-db-types.mjs",
+    "stack:up": "node tools/local-stack/stack.mjs",
+    "stack:fresh": "node tools/local-stack/stack.mjs --fresh",
+    "test:stack": "bash -c \"set -a; . tools/local-stack/.data/stack.env; set +a; pnpm --filter @rental/server test:stack\""
   },
   "devDependencies": {
     "@eslint/js": "^9.14.0",

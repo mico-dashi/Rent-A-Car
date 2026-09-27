@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --font-heading: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+[data-theme="light"] { color-scheme: light; }
+
+html { background: var(--color-background); color: var(--color-text); }
+body { @apply font-sans antialiased; min-height: 100dvh; }
+
+:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 3px; border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+@layer components {
+  .container-page { @apply mx-auto w-full max-w-page px-5 md:px-8; }
+  .card { @apply rounded-lg border border-line bg-surface; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-5 py-3 text-[15px] font-semibold transition-[transform,background-color,opacity] duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply btn bg-brand-btn text-on-brand hover:brightness-110; }
+  .btn-ghost { @apply btn border border-line bg-transparent text-fg hover:bg-raised; }
+  .field { @apply w-full rounded-md border border-line bg-raised px-3.5 py-3 text-[15px] text-fg placeholder:text-muted focus:border-brand focus:outline-none; }
+  .label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-muted; }
+  .eyebrow { @apply text-xs font-semibold uppercase tracking-[0.18em] text-brand; }
+  .skeleton { @apply animate-pulse rounded-md bg-raised; }
+}
+
+@layer components {
+  .table { @apply w-full text-left text-sm; }
+  .table th { @apply border-b border-line px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted; }
+  .table td { @apply border-b border-line px-3 py-3 align-top; }
+  .table tr:hover td { @apply bg-raised; }
+  .nav-link { @apply flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted hover:bg-raised hover:text-fg; }
+  .nav-link[aria-current="page"] { @apply bg-raised font-semibold text-fg; }
+}

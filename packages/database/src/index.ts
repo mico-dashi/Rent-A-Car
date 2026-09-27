@@ -86,3 +86,4 @@ export function toBusinessError(error: unknown): BusinessError {
   if (e?.code === "40001") return new BusinessError("VERSION_CONFLICT", 409);
   return new BusinessError("INTERNAL_ERROR" satisfies BusinessErrorCode, 500);
 }
+export * from "./types.gen";

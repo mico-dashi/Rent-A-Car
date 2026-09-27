@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { requireUser } from "@rental/auth";
 import { createBookingRequestSchema } from "@rental/validation";
-import { createCustomerBooking } from "@/lib/booking-service";
+import { createCustomerBooking } from "@rental/server";
 import { clientIp, handleRouteError, jsonError, rateLimit } from "@/lib/http";
 import { paymentProvider } from "@/lib/payments";
 import { serviceClient, userClient } from "@/lib/supabase/server";

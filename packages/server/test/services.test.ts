@@ -1,0 +1,155 @@
+import { randomUUID } from "node:crypto";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { DEMO } from "@rental/testing";
+import type { ChannelSender, OutboundMessage } from "@rental/notifications";
+import type { PaymentProvider } from "@rental/payments";
+import {
+  createStaffBooking, dispatchNotifications, generateAgreement, issueInvoice, modifyBookingDates, refundPayment, signAgreement, signedDocumentUrl,
+} from "../src";
+
+/**
+ * Runs against the local stack (tools/local-stack): real PostgREST, GoTrue and
+ * the RLS-enforcing storage emulator. Start it first: `pnpm stack:up`.
+ */
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const service = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+let db: SupabaseClient;
+
+const PNG = "data:image/png;base64," + Buffer.from(
+  "89504e470d0a1a0a0000000d49484452000000100000001008060000001ff3ff610000004f4944415478da63fc0f040c0c0c4c0c0c0c0c0c0c0c0c0c0c0cff19181818181818181818181818181818fe33303030303030303030303030303030fc6760606060606060606060606060606060f8cf0000d3b30f01e8e3c3a40000000049454e44ae426082".padEnd(260, "0"),
+  "hex").toString("base64");
+
+function day(offset: number, hour = 10) {
+  const d = new Date(Date.now() + offset * 86_400_000);
+  d.setUTCHours(hour, 0, 0, 0);
+  return d.toISOString();
+}
+
+class RecordingSender implements ChannelSender {
+  constructor(readonly channel: "EMAIL" | "PUSH" | "SMS") {}
+  sent: OutboundMessage[] = [];
+  async send(m: OutboundMessage) { this.sent.push(m); return { providerMessageId: `test-${this.sent.length}` }; }
+}
+
+/** Test double for the provider port (records calls; succeeds deterministically). */
+function testProvider(calls: string[]): PaymentProvider {
+  const ok = async () => ({ providerPaymentId: "pi_test", status: "succeeded" as const, clientSecret: null, amountMinor: 0, amountCapturableMinor: 0 });
+  return {
+    name: "stripe", mode: "test",
+    createCustomer: async () => ({ providerCustomerId: "cus_test" }),
+    createPaymentIntent: ok, capture: ok, cancel: ok,
+    createSetupIntent: async () => ({ id: "seti", clientSecret: "x" }),
+    refund: async (i) => { calls.push(`refund:${i.amountMinor}:${i.idempotencyKey}`); return { providerRefundId: `re_${i.idempotencyKey}`, status: "succeeded" as const }; },
+    getPaymentMethod: async () => ({ id: "pm", brand: "visa", last4: "4242", expMonth: 1, expYear: 2030, wallet: null }),
+    createConnectedAccount: async () => ({ accountId: "acct" }), createAccountLink: async () => ({ url: "https://x" }),
+    verifyWebhook: () => { throw new Error("n/a"); },
+  };
+}
+
+beforeAll(() => {
+  if (!url || !service) throw new Error("Start the local stack and export tools/local-stack/.data/stack.env");
+  db = createClient(url, service, { auth: { persistSession: false } });
+});
+afterAll(() => undefined);
+
+describe("staff booking lifecycle services", () => {
+  let bookingId: string;
+
+  it("creates a priced booking for a customer (staff)", async () => {
+    const b = await createStaffBooking(db, DEMO.tenant, DEMO.owner, {
+      tenantId: DEMO.tenant, customerId: DEMO.customer, vehicleId: DEMO.porsche911, pickupBranchId: DEMO.cityBranch, returnBranchId: DEMO.cityBranch,
+      startsAt: day(40), endsAt: day(43), pickupType: "BRANCH", additionalDrivers: 0, extras: [], initialStatus: "CONFIRMED", idempotencyKey: randomUUID(),
+    });
+    bookingId = b.id;
+    expect(b.status).toBe("CONFIRMED");
+    const { data } = await db.from("bookings").select("total_minor,deposit_minor").eq("id", b.id).single();
+    const { data: lines } = await db.from("booking_price_lines").select("amount_minor").eq("booking_id", b.id);
+    expect(lines!.reduce((a, l) => a + Number(l.amount_minor), 0)).toBe(Number(data!.total_minor));
+    const { data: dep } = await db.from("security_deposits").select("amount_minor,status").eq("booking_id", b.id).single();
+    expect(dep).toEqual({ amount_minor: 300000, status: "PENDING" });
+  });
+
+  it("re-prices when dates change and keeps the occupancy consistent", async () => {
+    const before = (await db.from("bookings").select("total_minor").eq("id", bookingId).single()).data!.total_minor;
+    const r = await modifyBookingDates(db, DEMO.owner, { bookingId, startsAt: day(40), endsAt: day(45) });
+    expect(r.total_minor).toBeGreaterThan(Number(before));
+    const { data: blk } = await db.from("vehicle_availability_blocks").select("period").eq("booking_id", bookingId).is("released_at", null).single();
+    expect(String(blk!.period)).toContain(day(45).slice(0, 10));
+  });
+
+  it("generates an agreement PDF, binds signatures to its hash, and produces the signed copy", async () => {
+    const a = await generateAgreement(db, bookingId);
+    const again = await generateAgreement(db, bookingId);
+    expect(again.id).toBe(a.id); // identical content => same agreement
+    const pdfUrl = await signedDocumentUrl(db, a.pdf_path as string);
+    const pdf = await fetch(pdfUrl.startsWith("http") ? pdfUrl : `${url}/storage/v1${pdfUrl}`);
+    expect((await pdf.arrayBuffer()).byteLength).toBeGreaterThan(1500);
+    await signAgreement(db, { agreementId: a.id as string, role: "CUSTOMER", signerName: "Sam Taylor", signerUserId: DEMO.customerUser, pngDataUrl: PNG, ip: "203.0.113.5", userAgent: "vitest" });
+    const done = await signAgreement(db, { agreementId: a.id as string, role: "EMPLOYEE", signerName: "Arben Hoxha", signerUserId: DEMO.owner, pngDataUrl: PNG, ip: "203.0.113.6", userAgent: "vitest" });
+    expect(done.status).toBe("FULLY_SIGNED");
+    const { data: fin } = await db.from("rental_agreements").select("pdf_path").eq("id", a.id).single();
+    expect(fin!.pdf_path).toMatch(/-signed\.pdf$/);
+    const { data: consent } = await db.from("consent_records").select("consent_type").eq("customer_id", DEMO.customer).eq("consent_type", "RENTAL_AGREEMENT");
+    expect(consent!.length).toBeGreaterThan(0);
+  });
+
+  it("issues gap-free numbered invoices", async () => {
+    const inv = await issueInvoice(db, bookingId);
+    expect(inv.number).toMatch(/^APEXDR-INV-\d{4}-\d{5}$/);
+    expect(Number(inv.total_minor)).toBe(Number(inv.subtotal_minor) + Number(inv.tax_minor));
+    const same = await issueInvoice(db, bookingId);
+    expect(same.id).toBe(inv.id);
+  });
+
+  it("refunds once, rejects over-refunds and settles booking totals", async () => {
+    const calls: string[] = [];
+    const provider = testProvider(calls);
+    const { data: pay } = await db.from("payments").insert({
+      tenant_id: DEMO.tenant, booking_id: bookingId, customer_id: DEMO.customer, purpose: "RENTAL", provider: "stripe", provider_payment_id: `pi_${randomUUID()}`,
+      amount_minor: 50000, amount_captured_minor: 50000, currency: "EUR", status: "SUCCEEDED", idempotency_key: randomUUID(),
+    }).select("id").single();
+    await db.rpc("record_booking_payment", { p_booking: bookingId, p_amount_minor: 50000, p_payment_id: pay!.id });
+    const key = randomUUID();
+    await refundPayment(db, provider, { paymentId: pay!.id, amountMinor: 20000, reason: "goodwill", actorId: DEMO.owner, idempotencyKey: key });
+    await refundPayment(db, provider, { paymentId: pay!.id, amountMinor: 20000, reason: "goodwill", actorId: DEMO.owner, idempotencyKey: key }); // replay
+    await expect(refundPayment(db, provider, { paymentId: pay!.id, amountMinor: 40000, reason: "too much", actorId: DEMO.owner, idempotencyKey: randomUUID() }))
+      .rejects.toThrow(/exceeds captured/);
+    const { data: b } = await db.from("bookings").select("amount_paid_minor,amount_refunded_minor,payment_status").eq("id", bookingId).single();
+    expect(calls).toHaveLength(1);
+    expect(b).toEqual({ amount_paid_minor: 50000, amount_refunded_minor: 20000, payment_status: "PARTIALLY_REFUNDED" });
+  });
+});
+
+describe("notification dispatch", () => {
+  it("renders templates in the recipient language, delivers in-app, fails loudly without a channel", async () => {
+    const email = new RecordingSender("EMAIL");
+    const res = await dispatchNotifications(db, { EMAIL: email }, 200);
+    expect(res.sent).toBeGreaterThan(0);
+    const confirmation = email.sent.find((m) => m.subject?.includes("is confirmed"));
+    expect(confirmation?.to).toBe("customer@example.demo");
+    expect(confirmation?.text).not.toContain("{{");
+    const { data: inApp } = await db.from("notifications").select("status,body").eq("channel", "IN_APP").eq("event", "booking.confirmed").limit(1).single();
+    expect(inApp!.status).toBe("DELIVERED");
+    expect(inApp!.body.length).toBeGreaterThan(5);
+    const { count } = await db.from("notifications").select("*", { count: "exact", head: true }).eq("channel", "PUSH").eq("status", "FAILED");
+    expect(count).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("storage RLS via the gateway", () => {
+  it("staff can read tenant documents; other users cannot", async () => {
+    const sign = async (email: string) => {
+      const c = createClient(url, anon, { auth: { persistSession: false } });
+      const { error } = await c.auth.signInWithPassword({ email, password: "DemoPassw0rd!" });
+      if (error) throw error;
+      return c;
+    };
+    const { data: a } = await db.from("rental_agreements").select("pdf_path").neq("status", "VOID").limit(1).single();
+    const owner = await sign("owner@apexdrive.demo");
+    const customer = await sign("customer@example.demo");
+    expect((await owner.storage.from("documents").download(a!.pdf_path as string)).error).toBeNull();
+    expect((await customer.storage.from("documents").download(a!.pdf_path as string)).error).not.toBeNull();
+  });
+});

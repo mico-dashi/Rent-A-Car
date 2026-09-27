@@ -1,10 +1,10 @@
-import "server-only";
 import type { SupabaseClient } from "@rental/auth";
 import { toPayloadLines, type CreateBookingPayload, type CreateBookingResult } from "@rental/database";
 import { planDeposit, platformFee, type PaymentProvider } from "@rental/payments";
 import { BusinessError, type CurrencyCode } from "@rental/types";
 import type { CreateBookingRequest } from "@rental/validation";
 import { buildQuote } from "./pricing-context";
+import { ensureProviderCustomer } from "./payments-ops";
 
 type Row = Record<string, unknown>;
 
@@ -125,13 +125,16 @@ export async function createCustomerBooking(
   if (!needsPayment || !provider) return { booking, payment: null };
 
   const connectedAccountId = (account?.provider_account_id as string | null) ?? undefined;
+  // A provider customer lets the method be saved for the deposit and approved post-rental charges.
+  const providerCustomerId = await ensureProviderCustomer(db, provider, customer.id as string);
   const fee = connectedAccountId ? platformFee(q.dueNowMinor, await commissionTerms(db, tenantId)) : 0;
   const idempotencyKey = `${req.idempotencyKey}:rental`;
   const intent = await provider.createPaymentIntent({
     amountMinor: q.dueNowMinor,
     currency: q.currency as CurrencyCode,
     captureMethod: "automatic",
-    saveForFutureUse: q.depositMinor > 0,
+    providerCustomerId,
+    saveForFutureUse: true,
     ...(fee > 0 ? { applicationFeeMinor: fee } : {}),
     ...(connectedAccountId ? { connectedAccountId } : {}),
     idempotencyKey,

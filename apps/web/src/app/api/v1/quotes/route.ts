@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { quoteRequestSchema } from "@rental/validation";
-import { buildQuote } from "@/lib/pricing-context";
+import { buildQuote } from "@rental/server";
 import { clientIp, handleRouteError, jsonError, rateLimit } from "@/lib/http";
 import { serviceClient } from "@/lib/supabase/server";
 import { getTenantOrNull } from "@/lib/tenant";

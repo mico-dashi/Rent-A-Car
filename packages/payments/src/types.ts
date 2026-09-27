@@ -27,6 +27,15 @@ export interface PaymentIntentResult {
   amountCapturableMinor: number;
 }
 
+export interface SavedMethod {
+  id: string;
+  brand: string | null;
+  last4: string | null;
+  expMonth: number | null;
+  expYear: number | null;
+  wallet: "apple_pay" | "google_pay" | null;
+}
+
 export interface RefundInput {
   providerPaymentId: string;
   amountMinor: number;
@@ -55,6 +64,8 @@ export interface NormalizedEvent {
   providerPaymentId?: string;
   providerRefundId?: string;
   providerAccountId?: string;
+  providerCustomerId?: string;
+  paymentMethodId?: string;
   amountMinor?: number;
   currency?: string;
   failureCode?: string;
@@ -81,6 +92,10 @@ export interface PaymentProvider {
   capture(input: { providerPaymentId: string; amountMinor?: number; idempotencyKey: string; connectedAccountId?: string }): Promise<PaymentIntentResult>;
   cancel(input: { providerPaymentId: string; idempotencyKey: string; connectedAccountId?: string }): Promise<PaymentIntentResult>;
   refund(input: RefundInput): Promise<{ providerRefundId: string; status: "pending" | "succeeded" | "failed" | "canceled" }>;
+  getPaymentMethod(input: { paymentMethodId: string; connectedAccountId?: string }): Promise<SavedMethod>;
+  /** Marketplace onboarding (Stripe Connect Express). */
+  createConnectedAccount(input: { email: string; country: string; businessName: string; idempotencyKey: string; metadata: Record<string, string> }): Promise<{ accountId: string }>;
+  createAccountLink(input: { accountId: string; refreshUrl: string; returnUrl: string }): Promise<{ url: string }>;
   /** Throws WebhookSignatureError when the signature is missing or wrong. */
   verifyWebhook(rawBody: string, signatureHeader: string | null): NormalizedEvent;
 }

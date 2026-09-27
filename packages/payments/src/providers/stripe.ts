@@ -109,6 +109,33 @@ export class StripeProvider implements PaymentProvider {
     return { providerRefundId: r.id, status } as const;
   }
 
+  async getPaymentMethod(input: { paymentMethodId: string; connectedAccountId?: string }) {
+    const pm = await this.stripe.paymentMethods.retrieve(input.paymentMethodId, {}, this.account(input.connectedAccountId));
+    const wallet = pm.card?.wallet?.type;
+    return {
+      id: pm.id,
+      brand: pm.card?.brand ?? null,
+      last4: pm.card?.last4 ?? null,
+      expMonth: pm.card?.exp_month ?? null,
+      expYear: pm.card?.exp_year ?? null,
+      wallet: wallet === "apple_pay" || wallet === "google_pay" ? wallet : null,
+    };
+  }
+
+  async createConnectedAccount(input: { email: string; country: string; businessName: string; idempotencyKey: string; metadata: Record<string, string> }) {
+    const a = await this.stripe.accounts.create(
+      { type: "express", email: input.email, country: input.country, business_profile: { name: input.businessName }, metadata: input.metadata,
+        capabilities: { card_payments: { requested: true }, transfers: { requested: true } } },
+      { idempotencyKey: input.idempotencyKey },
+    );
+    return { accountId: a.id };
+  }
+
+  async createAccountLink(input: { accountId: string; refreshUrl: string; returnUrl: string }) {
+    const l = await this.stripe.accountLinks.create({ account: input.accountId, refresh_url: input.refreshUrl, return_url: input.returnUrl, type: "account_onboarding" });
+    return { url: l.url };
+  }
+
   verifyWebhook(rawBody: string, signatureHeader: string | null): NormalizedEvent {
     if (!signatureHeader) throw new WebhookSignatureError();
     let event: Stripe.Event;
@@ -134,6 +161,8 @@ export function normalizeStripeEvent(event: Stripe.Event): NormalizedEvent {
       providerPaymentId: pi.id,
       amountMinor: type === "payment.authorized" ? pi.amount_capturable : pi.amount_received || pi.amount,
       currency: pi.currency.toUpperCase(),
+      ...(typeof pi.customer === "string" ? { providerCustomerId: pi.customer } : {}),
+      ...(typeof pi.payment_method === "string" ? { paymentMethodId: pi.payment_method } : {}),
       ...(pi.last_payment_error?.code ? { failureCode: pi.last_payment_error.code } : {}),
       ...(pi.last_payment_error?.message ? { failureMessage: pi.last_payment_error.message } : {}),
       ...(event.account ? { providerAccountId: event.account } : {}),
@@ -149,6 +178,15 @@ export function normalizeStripeEvent(event: Stripe.Event): NormalizedEvent {
       amountMinor: r.amount,
       currency: r.currency.toUpperCase(),
       ...(typeof r.payment_intent === "string" ? { providerPaymentId: r.payment_intent } : {}),
+    };
+  }
+  if (event.type === "setup_intent.succeeded") {
+    const si = event.data.object as Stripe.SetupIntent;
+    return {
+      ...base, type, metadata,
+      ...(typeof si.customer === "string" ? { providerCustomerId: si.customer } : {}),
+      ...(typeof si.payment_method === "string" ? { paymentMethodId: si.payment_method } : {}),
+      ...(event.account ? { providerAccountId: event.account } : {}),
     };
   }
   if (event.type === "account.updated") {

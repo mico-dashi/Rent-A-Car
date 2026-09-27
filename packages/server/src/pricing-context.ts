@@ -1,4 +1,3 @@
-import "server-only";
 import type { SupabaseClient } from "@rental/auth";
 import {
   ageOn, quote, utilization, type OccupancyBlock, type PricingRule, type Quote, type QuoteInput, type SeasonalRate,

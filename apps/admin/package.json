@@ -1,12 +1,12 @@
 {
-  "name": "@rental/web",
+  "name": "@rental/admin",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --port 3001",
     "build": "next build",
-    "start": "next start --port 3000",
+    "start": "next start --port 3001",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
@@ -22,14 +22,17 @@
     "@rental/payments": "workspace:*",
     "@rental/types": "workspace:*",
     "@rental/validation": "workspace:*",
-    "@stripe/react-stripe-js": "^3.7.0",
-    "@stripe/stripe-js": "^7.3.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.46.1",
     "next": "^15.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "server-only": "^0.0.1",
+    "@rental/ui": "workspace:*",
+    "@rental/notifications": "workspace:*",
+    "@rental/maps": "workspace:*",
+    "qrcode": "^1.5.4",
+    "pdf-lib": "^1.17.1",
     "@rental/server": "workspace:*"
   },
   "devDependencies": {
@@ -37,6 +40,7 @@
     "@types/react-dom": "^19.1.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.15"
+    "tailwindcss": "^3.4.15",
+    "@types/qrcode": "^1.5.5"
   }
 }
