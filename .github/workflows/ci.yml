@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  checks:
+    name: Lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run lint typecheck test
+      - name: Build web (no secrets required at build time)
+        run: pnpm --filter @rental/web build
+      - name: Validate white-label mobile configs
+        run: node apps/mobile/scripts/check-variants.mjs
+
+  database:
+    name: Migrations, RLS, tenant isolation & concurrency
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: pnpm install --frozen-lockfile
+      - name: Apply migrations + seed to a disposable DB and run integration tests
+        run: pnpm test:db
+
+  migration-safety:
+    name: Destructive migration guard
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail on destructive statements in new migrations unless labelled
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          changed=$(git diff --name-only --diff-filter=AM origin/${{ github.base_ref }}...HEAD -- supabase/migrations/)
+          [ -z "$changed" ] && exit 0
+          if grep -EinH '\b(drop\s+(table|column|schema|type)|truncate|alter\s+table\s+\S+\s+drop|delete\s+from)\b' $changed; then
+            if [[ ",$LABELS," == *",destructive-migration-approved,"* ]]; then
+              echo "Destructive statements present but explicitly approved via label."
+            else
+              echo "::error::Destructive migration detected. Add a reviewed rollback plan and the 'destructive-migration-approved' label."
+              exit 1
+            fi
+          fi
