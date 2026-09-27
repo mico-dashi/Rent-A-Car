@@ -56,7 +56,7 @@ function taxRulesAt(rules: TaxRule[], date: string): TaxRule[] {
  */
 export function quote(input: QuoteInput): Quote {
   const interval = { start: input.startsAt, end: input.endsAt };
-  const base = computeBaseRate(interval, input.vehicle, input.graceMinutes);
+  const base = computeBaseRate(interval, input.vehicle, input.graceMinutes, input.timeZone);
   const days = base.days;
   const dayDates = rentalDayDates(interval, days, input.timeZone);
   const perDayBase = allocateEvenly(base.amountMinor, days);

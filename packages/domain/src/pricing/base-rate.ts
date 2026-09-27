@@ -15,8 +15,8 @@ export interface BaseRateResult {
  * more expensive than paying the daily rate for every day. Rentals shorter than
  * a day use the hourly rate when configured, capped at one day.
  */
-export function computeBaseRate(interval: Interval, rates: VehicleRates, graceMinutes: number): BaseRateResult {
-  const days = billableDays(interval, graceMinutes);
+export function computeBaseRate(interval: Interval, rates: VehicleRates, graceMinutes: number, timeZone?: string): BaseRateResult {
+  const days = billableDays(interval, graceMinutes, timeZone);
   const durationMs = interval.end.getTime() - interval.start.getTime();
 
   if (rates.hourlyRateMinor !== null && durationMs < 24 * 3_600_000) {
