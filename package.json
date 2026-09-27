@@ -9,8 +9,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "test:db": "node scripts/db-test.mjs",
-    "db:reset:local": "node scripts/db-reset-local.mjs",
+    "test:db": "bash scripts/db-test.sh",
+    "db:reset:local": "bash scripts/db-reset-local.sh",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

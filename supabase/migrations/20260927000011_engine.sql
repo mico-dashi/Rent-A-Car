@@ -103,7 +103,7 @@ begin
 
   insert into public.tenants (slug, legal_name, display_name, country_code, base_currency, default_language, owner_user_id, status)
   values (lower(p_slug), p_legal_name, p_display_name, upper(p_country), upper(p_currency), p_language, v_user,
-          case when coalesce((app.setting('tenants_auto_approve'))::boolean, false) then 'ACTIVE' else 'PENDING_APPROVAL' end)
+          (case when coalesce((app.setting('tenants_auto_approve'))::boolean, false) then 'ACTIVE' else 'PENDING_APPROVAL' end)::public.tenant_status)
   returning id into v_tenant;
 
   insert into public.tenant_settings (tenant_id, timezone, onboarding_step) values (v_tenant, p_timezone, 2);
@@ -556,6 +556,9 @@ begin
   if not found then raise exception 'BOOKING_NOT_FOUND' using errcode = 'P0001'; end if;
   if p_expected_version is not null and b.version <> p_expected_version then
     raise exception 'VERSION_CONFLICT' using errcode = 'P0001';
+  end if;
+  if not exists (select 1 from public.booking_status_transitions t where t.from_status = b.status and t.to_status = p_to) then
+    raise exception 'INVALID_TRANSITION' using errcode = 'P0001';
   end if;
   select * into s from public.tenant_settings where tenant_id = b.tenant_id;
   v_is_owner_customer := exists (select 1 from public.customers c where c.id = b.customer_id and c.user_id = v_uid);

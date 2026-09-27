@@ -1,0 +1,48 @@
+/**
+ * Stable business error codes raised by the database engine (SQLSTATE P0001)
+ * and API layer. Clients map these to localized messages; never show raw errors.
+ */
+export const BUSINESS_ERROR_CODES = [
+  "AUTH_REQUIRED", "FORBIDDEN", "TENANT_NOT_ACTIVE", "TENANT_LIMIT_REACHED", "INVALID_TIMEZONE",
+  "INVITATION_INVALID", "INVITATION_EMAIL_MISMATCH", "IDEMPOTENCY_KEY_REQUIRED", "CUSTOMER_NOT_FOUND",
+  "CUSTOMER_RESTRICTED", "INVALID_INITIAL_STATUS", "PAYMENT_REQUIRED", "INVALID_RENTAL_WINDOW",
+  "RENTAL_TOO_SHORT", "RENTAL_TOO_LONG", "LEAD_TIME_NOT_MET", "BRANCH_NOT_FOUND", "ONE_WAY_NOT_ALLOWED",
+  "CURRENCY_MISMATCH", "PRICE_LINES_MISMATCH", "VEHICLE_NOT_BOOKABLE", "VEHICLE_NOT_AT_BRANCH",
+  "CLASS_NOT_FOUND", "VEHICLE_OR_CLASS_REQUIRED", "EXTRA_NOT_FOUND", "DISCOUNT_CODE_INVALID",
+  "VEHICLE_UNAVAILABLE", "CLASS_SOLD_OUT", "BOOKING_NOT_FOUND", "INVALID_TRANSITION", "PAYMENT_NOT_SUCCEEDED", "VERSION_CONFLICT",
+  "NO_SHOW_TOO_EARLY", "VEHICLE_NOT_ASSIGNED", "PICKUP_INSPECTION_REQUIRED", "AGREEMENT_SIGNATURE_REQUIRED",
+  "LICENSE_NOT_VERIFIED", "PAYMENT_INCOMPLETE", "DEPOSIT_NOT_SECURED", "RETURN_INSPECTION_REQUIRED",
+  "BOOKING_NOT_ASSIGNABLE", "SUBSTITUTION_NOT_ALLOWED", "VALIDATION_FAILED", "RATE_LIMITED", "INTERNAL_ERROR",
+] as const;
+export type BusinessErrorCode = (typeof BUSINESS_ERROR_CODES)[number];
+
+export class BusinessError extends Error {
+  constructor(
+    public readonly code: BusinessErrorCode,
+    public readonly httpStatus: number = 400,
+    public readonly details?: unknown,
+  ) {
+    super(code);
+    this.name = "BusinessError";
+  }
+}
+
+const HTTP_STATUS: Partial<Record<BusinessErrorCode, number>> = {
+  AUTH_REQUIRED: 401,
+  FORBIDDEN: 403,
+  BOOKING_NOT_FOUND: 404,
+  CUSTOMER_NOT_FOUND: 404,
+  VEHICLE_UNAVAILABLE: 409,
+  CLASS_SOLD_OUT: 409,
+  VERSION_CONFLICT: 409,
+  RATE_LIMITED: 429,
+  INTERNAL_ERROR: 500,
+};
+
+export function isBusinessErrorCode(value: unknown): value is BusinessErrorCode {
+  return typeof value === "string" && (BUSINESS_ERROR_CODES as readonly string[]).includes(value);
+}
+
+export function httpStatusFor(code: BusinessErrorCode): number {
+  return HTTP_STATUS[code] ?? 400;
+}
