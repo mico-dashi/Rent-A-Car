@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from "react-native";
+import { router } from "expo-router";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { listCatalog } from "@rental/api-client";
@@ -53,7 +54,7 @@ export default function Home() {
           <View style={{ gap: 14, marginBottom: 4 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <Text style={{ color: theme.primary, fontSize: 12, fontWeight: "700", letterSpacing: 2 }}>{tenant.displayName.toUpperCase()}</Text>
-              <Pressable accessibilityRole="button" onPress={clear} hitSlop={12}><Text style={{ color: theme.textMuted, fontSize: 12 }}>Switch</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={clear} hitSlop={12}><Text style={{ color: theme.textMuted, fontSize: 12 }}>{t("mobile.switchCompany")}</Text></Pressable>
             </View>
             <Text accessibilityRole="header" style={{ color: theme.text, fontSize: 30, fontWeight: "800", letterSpacing: -0.5 }}>{tenant.branding.headline ?? tenant.displayName}</Text>
             <FlatList
@@ -82,7 +83,8 @@ export default function Home() {
         renderItem={({ item: v }) => {
           const src = thumb(v.thumbnail_path);
           return (
-            <View accessible accessibilityLabel={`${v.make} ${v.model}`} style={{ backgroundColor: theme.surface, borderRadius: 20, overflow: "hidden", borderColor: theme.border, borderWidth: 1 }}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${v.make} ${v.model}`} onPress={() => router.push({ pathname: "/vehicle/[id]", params: { id: v.id } })}
+              style={({ pressed }) => ({ backgroundColor: theme.surface, borderRadius: 20, overflow: "hidden", borderColor: theme.border, borderWidth: 1, opacity: pressed ? 0.9 : 1 })}>
               <View style={{ aspectRatio: 16 / 10, backgroundColor: theme.surfaceRaised }}>
                 {src ? <Image source={{ uri: src }} style={{ flex: 1 }} contentFit="cover" transition={200} /> : null}
               </View>
@@ -94,7 +96,7 @@ export default function Home() {
                   {formatMoney(v.daily_rate_minor, v.currency, lang, { compact: true })}<Text style={{ color: theme.textMuted, fontSize: 13, fontWeight: "400" }}> / {t("common.perDay")}</Text>
                 </Text>
               </View>
-            </View>
+            </Pressable>
           );
         }}
       />

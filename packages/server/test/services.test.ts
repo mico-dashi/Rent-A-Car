@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DEMO } from "@rental/testing";
+import { syncInspection, syncInspectionPhoto, type InspectionDraft } from "@rental/api-client";
 import type { ChannelSender, OutboundMessage } from "@rental/notifications";
 import type { PaymentProvider } from "@rental/payments";
 import {
@@ -20,6 +21,9 @@ let db: SupabaseClient;
 const PNG = "data:image/png;base64," + Buffer.from(
   "89504e470d0a1a0a0000000d49484452000000100000001008060000001ff3ff610000004f4944415478da63fc0f040c0c0c4c0c0c0c0c0c0c0c0c0c0c0cff19181818181818181818181818181818fe33303030303030303030303030303030fc6760606060606060606060606060606060f8cf0000d3b30f01e8e3c3a40000000049454e44ae426082".padEnd(260, "0"),
   "hex").toString("base64");
+
+/** Random far-future window base so the suite can re-run against the same database. */
+const BASE = 2000 + Math.floor(Math.random() * 3000);
 
 function day(offset: number, hour = 10) {
   const d = new Date(Date.now() + offset * 86_400_000);
@@ -60,7 +64,7 @@ describe("staff booking lifecycle services", () => {
   it("creates a priced booking for a customer (staff)", async () => {
     const b = await createStaffBooking(db, DEMO.tenant, DEMO.owner, {
       tenantId: DEMO.tenant, customerId: DEMO.customer, vehicleId: DEMO.porsche911, pickupBranchId: DEMO.cityBranch, returnBranchId: DEMO.cityBranch,
-      startsAt: day(40), endsAt: day(43), pickupType: "BRANCH", additionalDrivers: 0, extras: [], initialStatus: "CONFIRMED", idempotencyKey: randomUUID(),
+      startsAt: day(BASE), endsAt: day(BASE + 3), pickupType: "BRANCH", additionalDrivers: 0, extras: [], initialStatus: "CONFIRMED", idempotencyKey: randomUUID(),
     });
     bookingId = b.id;
     expect(b.status).toBe("CONFIRMED");
@@ -73,10 +77,10 @@ describe("staff booking lifecycle services", () => {
 
   it("re-prices when dates change and keeps the occupancy consistent", async () => {
     const before = (await db.from("bookings").select("total_minor").eq("id", bookingId).single()).data!.total_minor;
-    const r = await modifyBookingDates(db, DEMO.owner, { bookingId, startsAt: day(40), endsAt: day(45) });
+    const r = await modifyBookingDates(db, DEMO.owner, { bookingId, startsAt: day(BASE), endsAt: day(BASE + 5) });
     expect(r.total_minor).toBeGreaterThan(Number(before));
     const { data: blk } = await db.from("vehicle_availability_blocks").select("period").eq("booking_id", bookingId).is("released_at", null).single();
-    expect(String(blk!.period)).toContain(day(45).slice(0, 10));
+    expect(String(blk!.period)).toContain(day(BASE + 5).slice(0, 10));
   });
 
   it("generates an agreement PDF, binds signatures to its hash, and produces the signed copy", async () => {
@@ -156,6 +160,52 @@ describe("scheduler tick", () => {
     expect(attached).toEqual([hostname]);
     const { data } = await db.from("tenant_domains").select("status").eq("hostname", hostname).single();
     expect(data?.status).toBe("VERIFIED");
+  });
+});
+
+describe("offline inspection sync (staff session, RLS)", () => {
+  it("creates, updates, detects version conflicts, uploads photos idempotently and enforces customer acceptance", async () => {
+    const offset = 300 + Math.floor(Math.random() * 1500);
+    const b = await createStaffBooking(db, DEMO.tenant, DEMO.owner, {
+      tenantId: DEMO.tenant, customerId: DEMO.customer, vehicleId: DEMO.porsche911, pickupBranchId: DEMO.cityBranch, returnBranchId: DEMO.cityBranch,
+      startsAt: day(offset), endsAt: day(offset + 2), pickupType: "BRANCH", additionalDrivers: 0, extras: [], initialStatus: "CONFIRMED", idempotencyKey: randomUUID(),
+    });
+    const staff = createClient(url, anon, { auth: { persistSession: false } });
+    const { error: signInError } = await staff.auth.signInWithPassword({ email: "staff@apexdrive.demo", password: "DemoPassw0rd!" });
+    expect(signInError).toBeNull();
+    const { data: odo } = await db.from("vehicles").select("odometer_km").eq("id", DEMO.porsche911).single();
+
+    const draft: InspectionDraft = {
+      id: randomUUID(), tenantId: DEMO.tenant, bookingId: b.id, vehicleId: DEMO.porsche911, kind: "PICKUP", odometerKm: Number(odo!.odometer_km) + 1,
+      fuelEighths: 8, batteryPct: null, checklist: { FRONT: true }, notes: "offline", customerAccepted: false, submit: false,
+      performedBy: DEMO.employee, performedAt: new Date().toISOString(),
+    };
+    const created = await syncInspection(staff, draft, null);
+    expect(created).toEqual({ ok: true, version: 1 });
+    // A lost response + retry of the same op edits our own record instead of failing.
+    expect(await syncInspection(staff, { ...draft, notes: "retry" }, null)).toEqual({ ok: true, version: 2 });
+
+    // Another device edited it meanwhile: an edit based on version 1 must not overwrite it.
+    const stale = await syncInspection(staff, { ...draft, notes: "stale" }, 1);
+    expect(stale).toMatchObject({ ok: false, kind: "conflict", error: "VERSION_CONFLICT", serverVersion: 2 });
+    const { data: kept } = await db.from("vehicle_inspections").select("notes").eq("id", draft.id).single();
+    expect(kept!.notes).toBe("retry");
+
+    expect(await syncInspection(staff, { ...draft, submit: true }, 2)).toMatchObject({ ok: false, kind: "rejected", error: "CUSTOMER_ACCEPTANCE_REQUIRED" });
+    expect(await syncInspection(staff, { ...draft, submit: true, customerAccepted: true }, 2)).toEqual({ ok: true, version: 3 });
+
+    const photo = { id: randomUUID(), tenantId: DEMO.tenant, inspectionId: draft.id, slot: "FRONT" as const, contentType: "image/png" as const, capturedAt: new Date().toISOString(), sha256: null };
+    const bytes = Buffer.from(PNG.split(",")[1]!, "base64");
+    expect(await syncInspectionPhoto(staff, photo, bytes)).toEqual({ ok: true });
+    expect(await syncInspectionPhoto(staff, photo, bytes)).toEqual({ ok: true });
+    const { count } = await db.from("inspection_photos").select("id", { count: "exact", head: true }).eq("inspection_id", draft.id);
+    expect(count).toBe(1);
+
+    // Customers cannot write inspections.
+    const customer = createClient(url, anon, { auth: { persistSession: false } });
+    await customer.auth.signInWithPassword({ email: "customer@example.demo", password: "DemoPassw0rd!" });
+    const denied = await syncInspection(customer, { ...draft, id: randomUUID(), kind: "RETURN", performedBy: DEMO.customerUser }, null);
+    expect(denied).toMatchObject({ ok: false, kind: "rejected", error: "FORBIDDEN" });
   });
 });
 

@@ -120,3 +120,4 @@ export class HttpApi {
       "/api/v1/bookings", input);
   }
 }
+export * from "./inspections";

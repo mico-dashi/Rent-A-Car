@@ -1,4 +1,5 @@
 import { adminEn } from "./admin.en";
+import { mobileEn } from "./mobile.en";
 
 export const en = {
   common: {
@@ -163,6 +164,7 @@ export const en = {
     INTERNAL_ERROR: "Something went wrong on our side. Please try again.",
   },
   admin: adminEn,
+  mobile: mobileEn,
 } as const;
 
 type Widen<T> = T extends string ? string : { [K in keyof T]: Widen<T[K]> };

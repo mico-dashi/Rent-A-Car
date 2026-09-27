@@ -19,18 +19,18 @@ export default function SelectTenant() {
     const res = await select({ code: code.trim().toUpperCase() });
     setBusy(false);
     if (res === "ok") router.replace("/home");
-    else setError(res === "not_found" ? "Company not found. Check the code and try again." : t("common.genericError"));
+    else setError(res === "not_found" ? t("mobile.companyNotFound") : t("common.genericError"));
   }
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, padding: 24, justifyContent: "center", gap: 20 }}>
         <View style={{ width: 6, height: 32, borderRadius: 3, backgroundColor: theme.primary }} />
-        <Text accessibilityRole="header" style={{ color: theme.text, fontSize: 32, fontWeight: "800", letterSpacing: -0.5 }}>Find your rental company</Text>
-        <Text style={{ color: theme.textMuted, fontSize: 16 }}>Enter the company code from your invitation, or open their link or QR code.</Text>
+        <Text accessibilityRole="header" style={{ color: theme.text, fontSize: 32, fontWeight: "800", letterSpacing: -0.5 }}>{t("mobile.findCompany")}</Text>
+        <Text style={{ color: theme.textMuted, fontSize: 16 }}>{t("mobile.findCompanyHint")}</Text>
         <TextInput
           value={code} onChangeText={setCode} autoCapitalize="characters" autoCorrect={false} maxLength={12}
-          placeholder="APEX01" placeholderTextColor={theme.textMuted} accessibilityLabel="Company code" returnKeyType="go" onSubmitEditing={submit}
+          placeholder="APEX01" placeholderTextColor={theme.textMuted} accessibilityLabel={t("mobile.companyCode")} returnKeyType="go" onSubmitEditing={submit}
           style={{ color: theme.text, backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, fontSize: 20, letterSpacing: 4 }}
         />
         {error ? <Text accessibilityRole="alert" style={{ color: theme.danger }}>{error}</Text> : null}

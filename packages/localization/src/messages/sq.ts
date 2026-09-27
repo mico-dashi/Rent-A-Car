@@ -1,5 +1,6 @@
 import type { Messages } from "./en";
 import { adminSq } from "./admin.sq";
+import { mobileSq } from "./mobile.sq";
 
 export const sq: Messages = {
   common: {
@@ -164,4 +165,5 @@ export const sq: Messages = {
     INTERNAL_ERROR: "Diçka shkoi keq nga ana jonë. Provoni përsëri.",
   },
   admin: adminSq,
+  mobile: mobileSq,
 };

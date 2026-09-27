@@ -6,6 +6,7 @@ import { en } from "../src/messages/en";
 import { sq } from "../src/messages/sq";
 
 const ADMIN_SRC = join(__dirname, "../../../apps/admin/src");
+const MOBILE_SRC = join(__dirname, "../../../apps/mobile/src");
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {
@@ -23,7 +24,7 @@ function has(catalog: object, key: string): boolean {
   return typeof node === "string" || (!!node && typeof node === "object" && "other" in node);
 }
 
-const sources = files(ADMIN_SRC).map((f) => readFileSync(f, "utf8"));
+const sources = [...files(ADMIN_SRC), ...files(MOBILE_SRC)].map((f) => readFileSync(f, "utf8"));
 const staticKeys = [...new Set(sources.flatMap((s) => [...s.matchAll(/\bt\(\s*"([a-zA-Z0-9_.]+)"/g)].map((m) => m[1]!)))];
 
 // Every `t(`prefix.${x}`)` in the admin app, with the values `x` can take.
@@ -83,8 +84,8 @@ const DYNAMIC: Record<string, readonly string[]> = {
   "vehicle.features": ["navigation", "bluetooth", "apple_carplay", "android_auto", "climate_control", "heated_seats", "sunroof", "parking_sensors", "rear_camera", "cruise_control", "tow_hitch", "child_seat_isofix"],
 };
 
-describe("admin dashboard translations", () => {
-  it("every static key used in apps/admin exists in en and sq", () => {
+describe("dashboard and mobile translations", () => {
+  it("every static key used in apps/admin and apps/mobile exists in en and sq", () => {
     expect(staticKeys.length).toBeGreaterThan(400);
     expect(staticKeys.filter((k) => !has(en, k))).toEqual([]);
     expect(staticKeys.filter((k) => !has(sq, k))).toEqual([]);

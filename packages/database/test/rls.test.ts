@@ -159,7 +159,7 @@ describe("RLS & column guards", () => {
       await c.query("update public.vehicle_inspections set notes = 'a', version = 1 where id = $1", [rows[0].id]);
       return errorOf(c.query("update public.vehicle_inspections set notes = 'b', version = 1 where id = $1", [rows[0].id]));
     });
-    expect(err).toMatch(/version conflict/);
+    expect(err).toBe("VERSION_CONFLICT"); // P0001, not 40001: PostgREST would retry a serialization failure
   });
 
   it("odometer can never go backwards on inspection submission", async () => {

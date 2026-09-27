@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AuthProvider } from "@/lib/auth";
 import { TenantProvider, useTenant } from "@/lib/tenant";
 
 function ThemedStack() {
@@ -17,7 +18,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <TenantProvider>
-        <ThemedStack />
+        <AuthProvider>
+          <ThemedStack />
+        </AuthProvider>
       </TenantProvider>
     </SafeAreaProvider>
   );
