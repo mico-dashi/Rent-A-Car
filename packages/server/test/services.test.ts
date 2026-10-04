@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import pg from "pg";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DEMO } from "@rental/testing";
@@ -6,7 +7,7 @@ import { syncInspection, syncInspectionPhoto, type InspectionDraft } from "@rent
 import type { ChannelSender, OutboundMessage } from "@rental/notifications";
 import type { PaymentProvider } from "@rental/payments";
 import {
-  createStaffBooking, dispatchNotifications, runScheduledJobs, generateAgreement, issueInvoice, modifyBookingDates, refundPayment, signAgreement, signedDocumentUrl,
+  createStaffBooking, dispatchNotifications, runScheduledJobs, applyDataRetention, generateAgreement, issueInvoice, modifyBookingDates, refundPayment, signAgreement, signedDocumentUrl,
 } from "../src";
 
 /**
@@ -206,6 +207,29 @@ describe("offline inspection sync (staff session, RLS)", () => {
     await customer.auth.signInWithPassword({ email: "customer@example.demo", password: "DemoPassw0rd!" });
     const denied = await syncInspection(customer, { ...draft, id: randomUUID(), kind: "RETURN", performedBy: DEMO.customerUser }, null);
     expect(denied).toMatchObject({ ok: false, kind: "rejected", error: "FORBIDDEN" });
+  });
+});
+
+describe("data retention job", () => {
+  it("anonymises an expired customer and deletes their stored ID images", async () => {
+    const sql = new pg.Client({ connectionString: process.env.STACK_DATABASE_URL });
+    await sql.connect();
+    const email = `retention-${randomUUID().slice(0, 8)}@example.demo`;
+    const { rows } = await sql.query(`insert into public.customers (tenant_id, first_name, last_name, email, created_at)
+      values ($1, 'Old', 'Customer', $2, now() - interval '3000 days') returning id`, [DEMO.tenant, email]);
+    const customerId = rows[0].id as string;
+    const path = `${DEMO.tenant}/retention/${customerId}.png`;
+    expect((await db.storage.from("customer-documents").upload(path, Buffer.from(PNG.split(",")[1]!, "base64"), { contentType: "image/png" })).error).toBeNull();
+    await sql.query(`insert into public.driver_licenses (tenant_id, customer_id, license_number, issuing_country, expires_on, front_image_path)
+      values ($1, $2, 'X1', 'AL', '2030-01-01', $3)`, [DEMO.tenant, customerId, path]);
+    await sql.end();
+
+    const r = await applyDataRetention(db);
+    expect(r.customers).toBeGreaterThanOrEqual(1);
+    expect(r.filesFailed).toEqual([]);
+    const { data: c } = await db.from("customers").select("first_name,email,anonymized_at").eq("id", customerId).single();
+    expect(c).toMatchObject({ first_name: "Deleted", email: `deleted+${customerId}@invalid.example` });
+    expect((await db.storage.from("customer-documents").download(path)).error).not.toBeNull();
   });
 });
 

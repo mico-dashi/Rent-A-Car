@@ -431,6 +431,12 @@ importers:
       '@rental/testing':
         specifier: workspace:*
         version: link:../testing
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
+      pg:
+        specifier: ^8.23.0
+        version: 8.23.0
 
   packages/testing:
     dependencies:

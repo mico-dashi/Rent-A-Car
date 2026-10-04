@@ -4,7 +4,7 @@
 // DEVELOPMENT/TEST ONLY.
 import http from "node:http";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 
@@ -126,6 +126,19 @@ async function storage(req, res, url) {
     mkdirSync(dirname(filePath(bucket, name)), { recursive: true });
     writeFileSync(filePath(bucket, name), bytes);
     return json(res, 200, { Key: `${bucket}/${name}`, Id: name });
+  }
+  // Bulk delete: DELETE /object/<bucket> {"prefixes": [names]} (storage-js remove()); RLS decides per row.
+  if (parts[0] === "object" && req.method === "DELETE" && parts.length === 2) {
+    const bucket = parts[1];
+    const names = (JSON.parse((await readBody(req)).toString() || "{}").prefixes ?? []).map(String);
+    let deleted;
+    try {
+      deleted = await asRole(claims, (c) => c.query("delete from storage.objects where bucket_id = $1 and name = any($2) returning name", [bucket, names]));
+    } catch (e) {
+      return json(res, 400, { statusCode: "403", error: "Unauthorized", message: String(e.message) });
+    }
+    for (const r of deleted.rows) rmSync(filePath(bucket, r.name), { force: true });
+    return json(res, 200, deleted.rows.map((r) => ({ name: r.name, bucket_id: bucket })));
   }
   if (parts[0] === "object" && (req.method === "GET" || req.method === "HEAD")) {
     const [maybeAuth, ...afterAuth] = parts.slice(1);

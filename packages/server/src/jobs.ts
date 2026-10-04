@@ -34,6 +34,34 @@ export interface JobDeps {
   senders: Senders;
   hosting: HostingDomains | null;
   txtLookup?: TxtLookup;
+  now?: () => Date;
+}
+
+/**
+ * Enforce each tenant's data-retention period (see migration 18), then delete
+ * the storage files of the rows it removed. Files that fail to delete are
+ * reported (and logged) so they can be cleaned up; the rows are already gone,
+ * so the app no longer references them.
+ */
+export async function applyDataRetention(db: SupabaseClient, limit = 200) {
+  const { data, error } = await db.rpc("apply_data_retention", { p_limit: limit });
+  if (error) throw new Error(error.message);
+  const r = data as { customers: number; photos: number; threads: number; notifications: number; files: { bucket: string; path: string }[] };
+  const byBucket = new Map<string, string[]>();
+  for (const f of r.files ?? []) byBucket.set(f.bucket, [...(byBucket.get(f.bucket) ?? []), f.path]);
+  let removed = 0;
+  const failed: string[] = [];
+  for (const [bucket, paths] of byBucket) {
+    for (let i = 0; i < paths.length; i += 100) {
+      const chunk = paths.slice(i, i + 100);
+      const res = await db.storage.from(bucket).remove(chunk);
+      if (res.error) {
+        failed.push(...chunk.map((p) => `${bucket}/${p}`));
+        console.error(JSON.stringify({ level: "error", where: "retention", bucket, count: chunk.length, error: res.error.message }));
+      } else removed += chunk.length;
+    }
+  }
+  return { customers: r.customers, photos: r.photos, threads: r.threads, notifications: r.notifications, filesRemoved: removed, filesFailed: failed };
 }
 
 export type JobResult = { ok: true; result: unknown } | { ok: false; error: string } | { ok: true; skipped: string };
@@ -51,12 +79,14 @@ export async function runScheduledJobs(db: SupabaseClient, deps: JobDeps): Promi
     ["cancellationRefunds", () => (deps.provider ? refundCancelledBookings(db, deps.provider) : null)],
     ["notifications", () => dispatchNotifications(db, deps.senders)],
     ["domains", () => verifyPendingDomains(db, deps.hosting, deps.txtLookup)],
+    // Once a day (the 03:00 UTC hour), outside peak hours; idempotent and batched.
+    ["retention", () => ((deps.now?.() ?? new Date()).getUTCHours() === 3 ? applyDataRetention(db) : null)],
   ];
   const out: Record<string, JobResult> = {};
   for (const [name, run] of jobs) {
     try {
       const p = run();
-      out[name] = p === null ? { ok: true, skipped: "payments not configured" } : { ok: true, result: await p };
+      out[name] = p === null ? { ok: true, skipped: name === "retention" ? "runs daily at 03:00 UTC" : "payments not configured" } : { ok: true, result: await p };
     } catch (e) {
       const error = e instanceof Error ? e.message : String(e);
       console.error(JSON.stringify({ level: "error", where: "cron", job: name, error }));

@@ -18,8 +18,8 @@
     "@rental/auth": "workspace:*",
     "@rental/database": "workspace:*",
     "@rental/domain": "workspace:*",
-    "@rental/notifications": "workspace:*",
     "@rental/localization": "workspace:*",
+    "@rental/notifications": "workspace:*",
     "@rental/payments": "workspace:*",
     "@rental/types": "workspace:*",
     "@rental/validation": "workspace:*",
@@ -27,7 +27,9 @@
     "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
+    "@rental/api-client": "workspace:*",
     "@rental/testing": "workspace:*",
-    "@rental/api-client": "workspace:*"
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.0"
   }
 }
