@@ -9,7 +9,7 @@ import { ensureProviderCustomer } from "./payments-ops";
 type Row = Record<string, unknown>;
 
 /** Find or create the caller's customer record in this tenant (service role; user already authenticated). */
-async function ensureCustomer(db: SupabaseClient, tenantId: string, user: { id: string; email: string | null }): Promise<Row> {
+export async function ensureCustomer(db: SupabaseClient, tenantId: string, user: { id: string; email: string | null }): Promise<Row> {
   const { data: existing, error } = await db.from("customers").select("*").eq("tenant_id", tenantId).eq("user_id", user.id).maybeSingle();
   if (error) throw new Error(error.message);
   if (existing) return existing;

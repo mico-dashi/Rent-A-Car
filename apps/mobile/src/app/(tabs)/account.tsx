@@ -3,7 +3,9 @@ import { Alert, Linking } from "react-native";
 import { router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { translateError } from "@rental/localization";
-import { tenantOrigin } from "@/lib/api";
+import * as WebBrowser from "expo-web-browser";
+import { BusinessError } from "@rental/types";
+import { httpApi, tenantOrigin } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { lockedTenantSlug } from "@/lib/config";
 import { useT } from "@/lib/i18n";
@@ -20,6 +22,29 @@ export default function AccountTab() {
   const [pushGranted, setPushGranted] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deletionRequested, setDeletionRequested] = useState(false);
+  const [identity, setIdentity] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
+  useEffect(() => {
+    if (!session || !tenant) return;
+    supabase().from("customers").select("identity_status").eq("tenant_id", tenant.id).eq("user_id", session.user.id).maybeSingle()
+      .then(({ data }) => setIdentity((data as { identity_status: string } | null)?.identity_status ?? "UNVERIFIED"));
+  }, [session, tenant, verifying]);
+
+  async function verifyIdentity() {
+    const api = tenant ? httpApi(tenant) : null;
+    if (!api) return;
+    setVerifying(true);
+    setError(null);
+    try {
+      const res = await api.startIdentityVerification();
+      if (res.url) await WebBrowser.openBrowserAsync(res.url);
+    } catch (e) {
+      setError(e instanceof BusinessError ? e.code : "INTERNAL_ERROR");
+    } finally {
+      setVerifying(false);
+    }
+  }
 
   useEffect(() => {
     Notifications.getPermissionsAsync().then((p) => setPushGranted(p.granted)).catch(() => setPushGranted(false));
@@ -48,6 +73,13 @@ export default function AccountTab() {
         <Label>{t("auth.email")}</Label>
         <Body>{session.user.email}</Body>
         {staffRole ? <Body muted>{t(`admin.roles.${staffRole}`)} · {tenant?.displayName}</Body> : null}
+      </Card>
+
+      <Card>
+        <H2>{t("account.identityTitle")}</H2>
+        <Body muted>{t("account.identityHint")}</Body>
+        {identity ? <Body>{t("admin.common.status")}: {t(`admin.verification.${identity}`)}</Body> : null}
+        {identity && identity !== "VERIFIED" ? <Button title={t("account.verifyIdentity")} variant="ghost" busy={verifying} onPress={verifyIdentity} /> : null}
       </Card>
 
       <Card>

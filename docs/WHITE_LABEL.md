@@ -57,7 +57,7 @@ The default is one universal iOS app and one universal Android app. They find th
 | Universal link | `https://app.myplatform.com/t/<slug>` (configured in `associatedDomains` / Android intent filters) | Implemented |
 | QR code | Encodes the universal link above | Implemented |
 | Custom-domain links | Tenant domains listed in a branded client's `associatedDomains` | Implemented |
-| Location discovery | Feature flag `location_discovery` | Not built yet |
+| Location discovery | "Find companies near me" in the universal app (`nearby_tenants`). Off by default: enable the `location_discovery` flag for the platform, a plan or individual tenants. The user's location is only asked for on tap and never stored | Implemented |
 
 After a tenant is selected, the app loads its branding, fleet, policies, currency and language through `resolve_tenant`. The choice is persisted in SecureStore. Branded builds lock to their tenant and cannot switch.
 

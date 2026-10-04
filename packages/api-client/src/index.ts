@@ -115,6 +115,11 @@ export class HttpApi {
     return this.request<QuoteResponse>("/api/v1/quotes", input);
   }
 
+  /** Hosted identity verification: returns the provider URL to open, or alreadyVerified. */
+  startIdentityVerification() {
+    return this.request<{ alreadyVerified: boolean; url?: string }>("/api/v1/identity/session", {});
+  }
+
   createBooking(input: CreateBookingRequest) {
     return this.request<{ id: string; reference: string; status: string; holdExpiresAt: string | null; payment: { clientSecret: string | null } | null }>(
       "/api/v1/bookings", input);

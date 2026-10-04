@@ -86,6 +86,10 @@ export const en = {
   },
   account: {
     bookings: "My bookings", cancelBooking: "Cancel booking", cancelConfirm: "Cancel this booking?", cancelFee: "Cancellation fee: {amount}", reference: "Reference",
+    identityTitle: "Identity verification",
+    identityHint: "Verify your ID document and a quick selfie with our payment partner Stripe. It speeds up pickup. We only receive the result, not your images.",
+    verifyIdentity: "Verify my identity",
+    identitySubmitted: "Thanks — your verification was submitted. The result usually arrives within a few minutes.",
     documents: "Documents", privacyTitle: "Privacy & data", exportData: "Download my data",
     exportHint: "A copy of your profile, bookings, payments and messages as a JSON file.",
     deleteAccount: "Delete my account",

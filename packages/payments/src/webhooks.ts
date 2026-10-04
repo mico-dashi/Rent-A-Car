@@ -24,6 +24,8 @@ export interface WebhookHandlers {
   onRefundFailed(e: NormalizedEvent): Promise<void>;
   onSetupSucceeded(e: NormalizedEvent): Promise<void>;
   onAccountUpdated(e: NormalizedEvent): Promise<void>;
+  /** verified, requires_input (failed or abandoned; the customer may retry) or canceled. */
+  onIdentityUpdated(e: NormalizedEvent): Promise<void>;
 }
 
 export type WebhookOutcome =
@@ -74,6 +76,9 @@ export async function processWebhook(
       case "refund.failed": await handlers.onRefundFailed(event); break;
       case "setup.succeeded": await handlers.onSetupSucceeded(event); break;
       case "account.updated": await handlers.onAccountUpdated(event); break;
+      case "identity.verified":
+      case "identity.requires_input":
+      case "identity.canceled": await handlers.onIdentityUpdated(event); break;
       case "ignored":
         await store.markIgnored(event.provider, event.eventId);
         return { httpStatus: 200, result: "ignored" };

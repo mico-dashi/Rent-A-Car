@@ -139,7 +139,36 @@ export function webhookHandlers(db: SupabaseClient, provider: PaymentProvider): 
         charges_enabled: acct.data.object.charges_enabled, payouts_enabled: acct.data.object.payouts_enabled, details_submitted: acct.data.object.details_submitted,
       }).eq("provider", "stripe").eq("provider_account_id", e.providerAccountId);
     },
+    async onIdentityUpdated(e) {
+      const customerId = e.metadata.customerId;
+      const tenantId = e.metadata.tenantId;
+      if (!customerId || !tenantId || !e.identitySessionId) return;
+      // Only the session we started for this customer may change their status (a stale or foreign session is ignored).
+      const status = e.type === "identity.verified" ? "VERIFIED" : "UNVERIFIED";
+      const { error } = await db.from("customers").update({
+        identity_status: status, identity_verified_at: status === "VERIFIED" ? new Date().toISOString() : null,
+      }).eq("id", customerId).eq("tenant_id", tenantId).eq("identity_provider", "stripe_identity").eq("identity_provider_ref", e.identitySessionId);
+      if (error) throw new Error(error.message);
+    },
   };
+}
+
+/**
+ * Start hosted identity verification for a customer (Stripe Identity). The
+ * customer is marked PENDING with the session id; the webhook sets the result.
+ * Already-verified customers are not sent through again.
+ */
+export async function startIdentityVerification(db: SupabaseClient, provider: PaymentProvider, input: { customerId: string; returnUrl: string }) {
+  const { data: c, error } = await db.from("customers").select("id,tenant_id,identity_status").eq("id", input.customerId).single();
+  if (error || !c) throw new Error("CUSTOMER_NOT_FOUND");
+  if (c.identity_status === "VERIFIED") return { alreadyVerified: true as const };
+  const session = await provider.createIdentitySession({
+    idempotencyKey: `idv:${c.id}:${Date.now()}`, returnUrl: input.returnUrl, metadata: { tenantId: c.tenant_id as string, customerId: c.id as string },
+  });
+  const upd = await db.from("customers").update({ identity_status: "PENDING", identity_provider: "stripe_identity", identity_provider_ref: session.id, identity_verified_at: null })
+    .eq("id", c.id);
+  if (upd.error) throw new Error(upd.error.message);
+  return { alreadyVerified: false as const, url: session.url };
 }
 
 /** Persist a reusable payment method (brand/last4 only — never card numbers). */

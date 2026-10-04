@@ -27,6 +27,7 @@
    - `refund.failed`
    - `setup_intent.succeeded`
    - `account.updated` (Connect)
+   - `identity.verification_session.verified`, `identity.verification_session.requires_input`, `identity.verification_session.canceled` (Stripe Identity, same endpoint and secret)
 4. For local testing, run `stripe listen --forward-to localhost:3000/api/v1/webhooks/stripe`.
 5. Link a tenant: the owner clicks **Payments → Connect Stripe** in the dashboard (also onboarding step 7). That creates an Express connected account and sends the owner through Stripe-hosted onboarding; `account.updated` webhooks keep `charges_enabled`/`payouts_enabled` in sync.
 
@@ -74,3 +75,7 @@ At return:
 | Retry-safe | A handler failure marks the event `FAILED` and returns 500, so Stripe retries. A stale `PROCESSING` claim older than 5 minutes can be retried. |
 | Logged | Every event is stored with its payload, attempts, status and last error. |
 | Mode-safe | Live events hitting a test deployment (and vice versa) are ignored. |
+
+## Identity verification (Stripe Identity)
+
+Customers can verify their identity before pickup from **Account → Privacy & data** (web) or **Account** (mobile). `POST /api/v1/identity/session` creates a Stripe Identity verification session (document + live selfie) on the platform account and returns its hosted URL. The customer is marked `PENDING` with the session id. The webhook sets `VERIFIED`, or back to `UNVERIFIED` when Stripe needs new input or the session is cancelled. Only the session the platform started for that customer can change their status. Images stay with Stripe; staff can still verify in person (`customers.documents`). Enable Identity in the Stripe dashboard and add the three `identity.verification_session.*` events to the webhook endpoint.

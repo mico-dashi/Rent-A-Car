@@ -38,11 +38,20 @@ test.describe("customer account", () => {
     expect(res.status).toBe(200);
     expect(res.disposition).toContain("attachment");
     expect(res.body).toContain(USERS.customer);
+    // Identity verification: offered on the privacy page; without Stripe configured the API says so instead of failing silently.
+    await expect(page.getByRole("heading", { name: "Identity verification" })).toBeVisible();
+    const idv = await page.evaluate(async () => {
+      const r = await fetch("/api/v1/identity/session", { method: "POST" });
+      return { status: r.status, body: await r.json() };
+    });
+    expect(idv).toEqual({ status: 503, body: { error: { code: "PAYMENTS_NOT_CONFIGURED" } } });
   });
 
-  test("signed-out users cannot export data", async ({ request }) => {
+  test("signed-out users cannot export data or start identity verification", async ({ request }) => {
     const { url, headers } = webApi("/account/export");
     expect((await request.get(url, { headers })).status()).toBe(401);
+    const idv = webApi("/api/v1/identity/session");
+    expect((await request.post(idv.url, { headers: idv.headers })).status()).toBe(401);
   });
 });
 

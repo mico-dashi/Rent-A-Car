@@ -326,7 +326,7 @@ Legend: ✅ done and tested · 🟡 partial · ⬜ not started. "Done" means imp
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Monorepo (pnpm + Turborepo), strict TS, lint, CI | ✅ |
-| 2 | Database schema: 79 tables, constraints, indexes, 17 migrations | ✅ |
+| 2 | Database schema: 79 tables, constraints, indexes, 19 migrations | ✅ |
 | 3 | Auth / tenant / RBAC / RLS + column guards; dashboard MFA (TOTP, AAL2 gate) | ✅ |
 | 4 | Design system (tokens, WCAG-checked tenant theming) | ✅ tokens + web/admin recipes + mobile primitives |
 | 5 | Tenant onboarding (11-step wizard, save and resume) | ✅ |
@@ -345,10 +345,10 @@ Legend: ✅ done and tested · 🟡 partial · ⬜ not started. "Done" means imp
 | 18 | Analytics (dashboard KPIs, charts, CSV exports) | ✅ |
 | 19 | Super admin (tenants, plans, flags, catalog, system health, privacy, audit) | ✅ |
 | 20 | Website and custom domains (content, legal pages, DNS verification job) | ✅ |
-| 21 | Universal mobile tenant routing | ✅ code, deep links; ⬜ location-based discovery |
+| 21 | Universal mobile tenant routing (code, deep links, companies near me) | ✅ |
 | 22 | White-label build configuration | ✅ |
 | 23 | Testing (unit, DB integration, stack services, Playwright E2E) | ✅; ⬜ native mobile UI tests (Maestro/Detox) |
-| 24 | Security hardening | 🟡 see [SECURITY.md](SECURITY.md) open items |
+| 24 | Security hardening (shared rate limits, nonce CSP, MFA, error reporting, retention, identity verification, dependency audit) | ✅ code; 🟡 see [SECURITY.md](SECURITY.md) open items (Auth CAPTCHA settings, pen test, live credentials) |
 | 25 | Deployment | 🟡 docs + workflows; no environment provisioned |
 
 ---

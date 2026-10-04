@@ -105,8 +105,10 @@ CI: **Mobile builds (EAS)** workflow (`workflow_dispatch`) with an `EXPO_TOKEN` 
 - [ ] `root_domain` set; wildcard DNS and TLS working; unknown hosts return 404
 - [ ] Stripe live keys with `PAYMENTS_MODE=live`; webhook endpoint and secret set; Connect accounts onboarded; test live payment and refund
 - [ ] `release-holds` and `tick` crons running; `CRON_SECRET` rotated; email (Resend), push (Expo) and optional SMS (Twilio) configured
-- [ ] Distributed rate limiting (Redis) configured
-- [ ] Sentry initialised; alerts on webhook `FAILED` events and 5xx rates
+- [ ] Upstash Redis configured (`RATE_LIMIT_REDIS_URL` + `RATE_LIMIT_REDIS_TOKEN`) when running more than one instance
+- [ ] `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` set for web and admin; alerts on webhook `FAILED` events and 5xx rates
+- [ ] Supabase Auth CAPTCHA enabled; Stripe Identity enabled and its webhook events subscribed
+- [ ] Each tenant's `data_retention_days` reviewed (default 7 years); platform `location_discovery` flag set as intended
 - [ ] Legal: each tenant has published terms and privacy text (`tenant_settings.legal_*`); cookie consent where required
 - [ ] Security open items in SECURITY.md resolved or accepted
 - [ ] E2E suite green against staging (`pnpm test:e2e` with `ADMIN_URL`/`WEB_URL` pointed at it)

@@ -13,6 +13,7 @@ All routes resolve the tenant from the `Host` header. Errors follow the shape `{
 | GET/POST | `/api/v1/cron/tick` | `Bearer CRON_SECRET` | Scheduler tick (every 5 min): holds, housekeeping and reminders, deposit authorisations, cancellation refunds, notification delivery, domain verification. `200` with per-job results, `207` if any job failed. |
 | GET | `/account/documents/{agreement\|invoice}/{id}` | customer session | Redirects to a 60-second signed URL for the customer's own agreement or invoice PDF (ownership checked through RLS). |
 | GET | `/account/export` | customer session | GDPR export of everything the account holds, as a JSON download. |
+| POST | `/api/v1/identity/session` | user JWT (cookie or `Authorization: Bearer`) | Starts Stripe Identity verification for the caller's customer record in this tenant. Returns `{ alreadyVerified, url? }`. Rate-limited; `PAYMENTS_NOT_CONFIGURED` without Stripe. |
 | GET | `/auth/callback` | — | OAuth, magic-link and confirmation code exchange. |
 
 ## Database RPCs (Supabase `rpc()`)
@@ -41,6 +42,8 @@ All routes resolve the tenant from the `Host` header. Errors follow the shape `{
 | `vehicle_by_qr(p_token)` | `vehicles.read` | Resolve a fleet QR code within the caller's tenant |
 | `platform_overview()` / `admin_set_tenant_status(...)` / `admin_anonymize_user(...)` | platform admin | Platform console |
 | `export_my_data()` / `request_account_deletion()` | authenticated | Privacy self-service |
+| `apply_data_retention(p_limit)` | **service role only** | Retention enforcement; returns the storage files to delete |
+| `nearby_tenants(p_lat, p_lng, p_radius_km, p_limit)` | anon, authenticated | Universal app discovery: active tenants with discovery enabled, nearest branch and distance |
 
 ## Tables over PostgREST
 

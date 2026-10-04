@@ -48,7 +48,7 @@ function handlers(calls: string[], failOnce = false): WebhookHandlers {
   return {
     onPaymentSucceeded: h("succeeded"), onPaymentFailed: h("failed"), onPaymentAuthorized: h("authorized"),
     onPaymentCanceled: h("canceled"), onRefundSucceeded: h("refund"), onRefundFailed: h("refund_failed"),
-    onSetupSucceeded: h("setup"), onAccountUpdated: h("account"),
+    onSetupSucceeded: h("setup"), onAccountUpdated: h("account"), onIdentityUpdated: h("identity"),
   };
 }
 
@@ -96,6 +96,20 @@ describe("payment webhooks", () => {
     const { payload, header } = signed(e);
     const n = provider.verifyWebhook(payload, header);
     expect(n).toMatchObject({ type: "payment.authorized", amountMinor: 300_000, currency: "EUR", metadata: { bookingId: "b1" } });
+  });
+
+  it("normalises Stripe Identity sessions and routes them to the identity handler", async () => {
+    const idv = (id: string, type: string, lastError: object | null) => ({
+      id, object: "event", type, livemode: false, api_version: "2024-06-20", created: 1, pending_webhooks: 1, request: null,
+      data: { object: { id: "vs_1", object: "identity.verification_session", status: type.split(".").pop(), last_error: lastError, metadata: { tenantId: "t1", customerId: "c1" } } },
+    });
+    const ok = signed(idv("evt_i1", "identity.verification_session.verified", null));
+    expect(provider.verifyWebhook(ok.payload, ok.header)).toMatchObject({ type: "identity.verified", identitySessionId: "vs_1", metadata: { tenantId: "t1", customerId: "c1" } });
+    const bad = signed(idv("evt_i2", "identity.verification_session.requires_input", { code: "document_expired", reason: "The document is expired." }));
+    expect(provider.verifyWebhook(bad.payload, bad.header)).toMatchObject({ type: "identity.requires_input", failureCode: "document_expired" });
+    const calls: string[] = [];
+    expect((await processWebhook(provider, ok.payload, ok.header, new MemoryStore(), handlers(calls))).result).toBe("processed");
+    expect(calls).toEqual(["identity"]);
   });
 
   it("refuses to run with mismatched key mode", () => {

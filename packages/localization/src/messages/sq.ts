@@ -87,6 +87,10 @@ export const sq: Messages = {
   },
   account: {
     bookings: "Rezervimet e mia", cancelBooking: "Anulo rezervimin", cancelConfirm: "Ta anulojmë këtë rezervim?", cancelFee: "Tarifa e anulimit: {amount}", reference: "Referenca",
+    identityTitle: "Verifikimi i identitetit",
+    identityHint: "Verifikoni dokumentin e identitetit dhe një selfie të shpejtë me partnerin tonë të pagesave Stripe. Kjo e shpejton marrjen. Ne marrim vetëm rezultatin, jo imazhet tuaja.",
+    verifyIdentity: "Verifiko identitetin tim",
+    identitySubmitted: "Faleminderit — verifikimi u dërgua. Rezultati zakonisht vjen brenda pak minutash.",
     documents: "Dokumentet", privacyTitle: "Privatësia dhe të dhënat", exportData: "Shkarko të dhënat e mia",
     exportHint: "Një kopje e profilit, rezervimeve, pagesave dhe mesazheve tuaja si skedar JSON.",
     deleteAccount: "Fshi llogarinë time",

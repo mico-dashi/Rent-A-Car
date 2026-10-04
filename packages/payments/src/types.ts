@@ -54,6 +54,9 @@ export type NormalizedEventType =
   | "refund.failed"
   | "setup.succeeded"
   | "account.updated"
+  | "identity.verified"
+  | "identity.requires_input"
+  | "identity.canceled"
   | "ignored";
 
 export interface NormalizedEvent {
@@ -66,6 +69,8 @@ export interface NormalizedEvent {
   providerAccountId?: string;
   providerCustomerId?: string;
   paymentMethodId?: string;
+  /** Identity verification session id (Stripe Identity). */
+  identitySessionId?: string;
   amountMinor?: number;
   currency?: string;
   failureCode?: string;
@@ -96,6 +101,12 @@ export interface PaymentProvider {
   /** Marketplace onboarding (Stripe Connect Express). */
   createConnectedAccount(input: { email: string; country: string; businessName: string; idempotencyKey: string; metadata: Record<string, string> }): Promise<{ accountId: string }>;
   createAccountLink(input: { accountId: string; refreshUrl: string; returnUrl: string }): Promise<{ url: string }>;
+  /**
+   * Hosted identity verification (ID document + live selfie) on the platform
+   * account. The provider keeps the images; we only store the session id and
+   * the outcome.
+   */
+  createIdentitySession(input: { idempotencyKey: string; returnUrl: string; metadata: Record<string, string> }): Promise<{ id: string; url: string }>;
   /** Throws WebhookSignatureError when the signature is missing or wrong. */
   verifyWebhook(rawBody: string, signatureHeader: string | null): NormalizedEvent;
 }

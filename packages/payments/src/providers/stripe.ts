@@ -30,6 +30,9 @@ const EVENT_MAP: Record<string, NormalizedEventType> = {
   "refund.failed": "refund.failed",
   "setup_intent.succeeded": "setup.succeeded",
   "account.updated": "account.updated",
+  "identity.verification_session.verified": "identity.verified",
+  "identity.verification_session.requires_input": "identity.requires_input",
+  "identity.verification_session.canceled": "identity.canceled",
 };
 
 export class StripeProvider implements PaymentProvider {
@@ -136,6 +139,15 @@ export class StripeProvider implements PaymentProvider {
     return { url: l.url };
   }
 
+  async createIdentitySession(input: { idempotencyKey: string; returnUrl: string; metadata: Record<string, string> }) {
+    const v = await this.stripe.identity.verificationSessions.create(
+      { type: "document", options: { document: { require_matching_selfie: true, require_live_capture: true } }, return_url: input.returnUrl, metadata: input.metadata },
+      { idempotencyKey: input.idempotencyKey },
+    );
+    if (!v.url) throw new Error("Stripe Identity returned no verification URL");
+    return { id: v.id, url: v.url };
+  }
+
   verifyWebhook(rawBody: string, signatureHeader: string | null): NormalizedEvent {
     if (!signatureHeader) throw new WebhookSignatureError();
     let event: Stripe.Event;
@@ -187,6 +199,14 @@ export function normalizeStripeEvent(event: Stripe.Event): NormalizedEvent {
       ...(typeof si.customer === "string" ? { providerCustomerId: si.customer } : {}),
       ...(typeof si.payment_method === "string" ? { paymentMethodId: si.payment_method } : {}),
       ...(event.account ? { providerAccountId: event.account } : {}),
+    };
+  }
+  if (event.type.startsWith("identity.verification_session.")) {
+    const v = event.data.object as Stripe.Identity.VerificationSession;
+    return {
+      ...base, type, metadata, identitySessionId: v.id,
+      ...(v.last_error?.code ? { failureCode: v.last_error.code } : {}),
+      ...(v.last_error?.reason ? { failureMessage: v.last_error.reason } : {}),
     };
   }
   if (event.type === "account.updated") {

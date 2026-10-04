@@ -7,7 +7,7 @@ import { syncInspection, syncInspectionPhoto, type InspectionDraft } from "@rent
 import type { ChannelSender, OutboundMessage } from "@rental/notifications";
 import type { PaymentProvider } from "@rental/payments";
 import {
-  createStaffBooking, dispatchNotifications, runScheduledJobs, applyDataRetention, generateAgreement, issueInvoice, modifyBookingDates, refundPayment, signAgreement, signedDocumentUrl,
+  createStaffBooking, dispatchNotifications, runScheduledJobs, applyDataRetention, startIdentityVerification, webhookHandlers, generateAgreement, issueInvoice, modifyBookingDates, refundPayment, signAgreement, signedDocumentUrl,
 } from "../src";
 
 /**
@@ -49,6 +49,7 @@ function testProvider(calls: string[]): PaymentProvider {
     refund: async (i) => { calls.push(`refund:${i.amountMinor}:${i.idempotencyKey}`); return { providerRefundId: `re_${i.idempotencyKey}`, status: "succeeded" as const }; },
     getPaymentMethod: async () => ({ id: "pm", brand: "visa", last4: "4242", expMonth: 1, expYear: 2030, wallet: null }),
     createConnectedAccount: async () => ({ accountId: "acct" }), createAccountLink: async () => ({ url: "https://x" }),
+    createIdentitySession: async (i) => { calls.push(`idv:${i.metadata.customerId}`); return { id: `vs_${calls.length}`, url: "https://verify.stripe.com/start/test" }; },
     verifyWebhook: () => { throw new Error("n/a"); },
   };
 }
@@ -230,6 +231,31 @@ describe("data retention job", () => {
     const { data: c } = await db.from("customers").select("first_name,email,anonymized_at").eq("id", customerId).single();
     expect(c).toMatchObject({ first_name: "Deleted", email: `deleted+${customerId}@invalid.example` });
     expect((await db.storage.from("customer-documents").download(path)).error).not.toBeNull();
+  });
+});
+
+describe("identity verification (Stripe Identity)", () => {
+  it("marks the customer pending, then verified only for the session we started", async () => {
+    const calls: string[] = [];
+    const provider = testProvider(calls);
+    const { data: cust } = await db.from("customers").insert({ tenant_id: DEMO.tenant, first_name: "Idv", last_name: "Test", email: `idv-${randomUUID().slice(0, 8)}@example.demo` }).select("id").single();
+    const started = await startIdentityVerification(db, provider, { customerId: cust!.id, returnUrl: "https://apex.example/account" });
+    expect(started).toEqual({ alreadyVerified: false, url: "https://verify.stripe.com/start/test" });
+    const { data: pending } = await db.from("customers").select("identity_status,identity_provider,identity_provider_ref").eq("id", cust!.id).single();
+    expect(pending).toMatchObject({ identity_status: "PENDING", identity_provider: "stripe_identity" });
+
+    const h = webhookHandlers(db, provider);
+    const event = (sessionId: string, type: "identity.verified" | "identity.requires_input") => ({
+      provider: "stripe", eventId: randomUUID(), type, rawType: type, livemode: false, payload: {}, identitySessionId: sessionId,
+      metadata: { tenantId: DEMO.tenant, customerId: cust!.id },
+    });
+    await h.onIdentityUpdated(event("vs_someone_else", "identity.verified")); // stale/foreign session: ignored
+    expect((await db.from("customers").select("identity_status").eq("id", cust!.id).single()).data!.identity_status).toBe("PENDING");
+    await h.onIdentityUpdated(event(pending!.identity_provider_ref as string, "identity.verified"));
+    const { data: done } = await db.from("customers").select("identity_status,identity_verified_at").eq("id", cust!.id).single();
+    expect(done!.identity_status).toBe("VERIFIED");
+    expect(done!.identity_verified_at).not.toBeNull();
+    expect(await startIdentityVerification(db, provider, { customerId: cust!.id, returnUrl: "https://x" })).toEqual({ alreadyVerified: true });
   });
 });
 
