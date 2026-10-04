@@ -30,6 +30,7 @@ const serverSchema = publicSchema.extend({
   GOOGLE_MAPS_SERVER_KEY: z.string().optional(),
   SENTRY_DSN: z.string().url().optional(),
   RATE_LIMIT_REDIS_URL: z.string().url().optional(),
+  RATE_LIMIT_REDIS_TOKEN: z.string().optional(),
   CRON_SECRET: z.string().min(24).optional(),
 });
 

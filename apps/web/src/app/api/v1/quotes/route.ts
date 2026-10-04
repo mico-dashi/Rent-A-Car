@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const requestId = randomUUID();
   try {
-    if (!rateLimit(`quote:${clientIp(req)}`, 60, 60_000)) return jsonError("RATE_LIMITED");
+    if (!await rateLimit(`quote:${clientIp(req)}`, 60, 60_000)) return jsonError("RATE_LIMITED");
     const tenant = await getTenantOrNull();
     if (!tenant) return jsonError("TENANT_NOT_ACTIVE", 404);
     const body = quoteRequestSchema.parse(await req.json());

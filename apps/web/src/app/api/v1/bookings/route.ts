@@ -13,11 +13,11 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const requestId = randomUUID();
   try {
-    if (!rateLimit(`book:${clientIp(req)}`, 10, 60_000)) return jsonError("RATE_LIMITED");
+    if (!await rateLimit(`book:${clientIp(req)}`, 10, 60_000)) return jsonError("RATE_LIMITED");
     const tenant = await getTenantOrNull();
     if (!tenant) return jsonError("TENANT_NOT_ACTIVE", 404);
     const user = await requireUser(await userClient()); // validates JWT with Supabase Auth
-    if (!rateLimit(`book-user:${user.id}`, 5, 60_000)) return jsonError("RATE_LIMITED");
+    if (!await rateLimit(`book-user:${user.id}`, 5, 60_000)) return jsonError("RATE_LIMITED");
     const body = createBookingRequestSchema.parse(await req.json());
     if (body.tenantId !== tenant.id) return jsonError("TENANT_MISMATCH", 400);
 

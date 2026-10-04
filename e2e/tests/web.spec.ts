@@ -57,3 +57,26 @@ test.describe("scheduler", () => {
     expect(Object.values(results).every((r) => r.ok)).toBe(true);
   });
 });
+
+test.describe("content security policy", () => {
+  test("pages carry a per-request nonce CSP without unsafe-inline scripts, and still hydrate", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("console", (m) => { if (m.type() === "error" && /Content Security Policy|CSP/i.test(m.text())) errors.push(m.text()); });
+    const first = await page.goto(`${WEB}/fleet`);
+    const csp = first!.headers()["content-security-policy"] ?? "";
+    const script = csp.split("; ").find((d) => d.startsWith("script-src")) ?? "";
+    expect(script).toMatch(/'nonce-[A-Za-z0-9+/=]{20,}'/);
+    expect(script).toContain("'strict-dynamic'");
+    expect(script).not.toContain("unsafe-inline");
+    const nonce = /'nonce-([^']+)'/.exec(script)![1]!;
+    // Next.js stamps the nonce on its scripts (attribute is hidden from the DOM, so check the property).
+    const nonced = await page.locator("script[src]").evaluateAll((els, n) => els.filter((e) => (e as HTMLScriptElement).nonce === n).length, nonce);
+    expect(nonced).toBeGreaterThan(0);
+    const second = await page.goto(`${WEB}/fleet`);
+    expect(second!.headers()["content-security-policy"]).not.toBe(csp); // fresh nonce per request
+    // Hydrated: the client-side language switcher works.
+    await page.getByRole("button", { name: "Shqip" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "sq");
+    expect(errors).toEqual([]);
+  });
+});

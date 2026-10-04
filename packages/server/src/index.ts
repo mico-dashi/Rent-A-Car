@@ -13,3 +13,4 @@ export * from "./documents";
 export * from "./dispatch";
 export * from "./domains";
 export * from "./jobs";
+export * from "./rate-limit";

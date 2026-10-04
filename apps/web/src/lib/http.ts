@@ -4,6 +4,8 @@ import { BusinessError, httpStatusFor, isBusinessErrorCode, type BusinessErrorCo
 import { toBusinessError } from "@rental/database";
 import { AuthorizationError } from "@rental/auth";
 import { z } from "@rental/validation";
+import { rateLimiterFromEnv, type RateLimiter } from "@rental/server";
+import { serverEnv } from "./env";
 
 export function jsonError(code: BusinessErrorCode, status = httpStatusFor(code), details?: unknown) {
   return NextResponse.json({ error: { code, ...(details ? { details } : {}) } }, { status, headers: { "cache-control": "no-store" } });
@@ -23,20 +25,11 @@ export function handleRouteError(e: unknown, requestId: string) {
 }
 
 // ---- Rate limiting --------------------------------------------------------
-// In-memory sliding window per key. Adequate for a single instance; for
-// multi-instance deployments configure RATE_LIMIT_REDIS_URL (see SECURITY.md).
-const buckets = new Map<string, number[]>();
-export function rateLimit(key: string, limit: number, windowMs: number): boolean {
-  const now = Date.now();
-  const hits = (buckets.get(key) ?? []).filter((t) => now - t < windowMs);
-  if (hits.length >= limit) {
-    buckets.set(key, hits);
-    return false;
-  }
-  hits.push(now);
-  buckets.set(key, hits);
-  if (buckets.size > 50_000) buckets.clear();
-  return true;
+// Shared across instances when RATE_LIMIT_REDIS_URL/TOKEN are set (see @rental/server/rate-limit).
+let limiter: RateLimiter | null = null;
+export function rateLimit(key: string, limit: number, windowMs: number): Promise<boolean> {
+  limiter ??= rateLimiterFromEnv(serverEnv());
+  return limiter.hit(key, limit, windowMs);
 }
 
 export function clientIp(req: Request): string {
