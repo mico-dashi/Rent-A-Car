@@ -119,6 +119,19 @@ jobs:
             web.log
             admin.log
 
+  audit:
+    name: Dependency audit (production, high+)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Known advisories without a fix are listed with reasons in pnpm-workspace.yaml (auditConfig).
+      - run: pnpm audit --prod --audit-level high
+
   migration-safety:
     name: Destructive migration guard
     if: github.event_name == 'pull_request'
