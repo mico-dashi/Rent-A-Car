@@ -133,7 +133,7 @@ jobs:
         run: |
           changed=$(git diff --name-only --diff-filter=AM origin/${{ github.base_ref }}...HEAD -- supabase/migrations/)
           [ -z "$changed" ] && exit 0
-          if grep -EinH '\b(drop\s+(table|column|schema|type)|truncate|alter\s+table\s+\S+\s+drop|delete\s+from)\b' $changed; then
+          if ! bash scripts/check-destructive-migrations.sh $changed; then
             if [[ ",$LABELS," == *",destructive-migration-approved,"* ]]; then
               echo "Destructive statements present but explicitly approved via label."
             else
