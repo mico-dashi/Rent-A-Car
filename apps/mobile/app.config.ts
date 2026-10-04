@@ -24,7 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       associatedDomains: client.associatedDomains.map((d) => `applinks:${d}`),
       infoPlist: {
         NSCameraUsageDescription: "Used to photograph vehicles during pickup and return inspections and to scan vehicle QR codes.",
-        NSLocationWhenInUseUsageDescription: "Used to find rental locations near you.",
+        NSLocationWhenInUseUsageDescription: "Used to find rental locations near you. Your location is not stored.",
         ITSAppUsesNonExemptEncryption: false,
       },
     },
@@ -49,6 +49,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ["expo-image-picker", { cameraPermission: "Used to photograph vehicles during pickup and return inspections.", photosPermission: false, microphonePermission: false }],
       ["expo-notifications", { color: client.primaryColor }],
       "expo-web-browser",
+      ["expo-location", { locationWhenInUsePermission: "Used to find rental locations near you. Your location is not stored." }],
       ["expo-splash-screen", { image: client.splash, backgroundColor: client.backgroundColor, imageWidth: 160, resizeMode: "contain" }],
     ],
     experiments: { typedRoutes: true },

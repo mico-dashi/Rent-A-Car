@@ -121,3 +121,19 @@ export class HttpApi {
   }
 }
 export * from "./inspections";
+
+export interface NearbyTenant {
+  slug: string;
+  display_name: string;
+  logo_path: string | null;
+  primary_color: string | null;
+  branch_name: string;
+  city: string | null;
+  distance_km: number;
+}
+
+/** Active rental companies with a branch near a point (universal app discovery; empty when the feature is off). */
+export async function nearbyTenants(client: SupabaseClient, lat: number, lng: number, radiusKm = 50): Promise<NearbyTenant[]> {
+  const rows = unwrap(await client.rpc("nearby_tenants", { p_lat: lat, p_lng: lng, p_radius_km: radiusKm, p_limit: 20 })) as NearbyTenant[] | null;
+  return (rows ?? []).map((r) => ({ ...r, distance_km: Number(r.distance_km) }));
+}
