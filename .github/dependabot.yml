@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      # Expo SDK packages move together; upgrade them with `npx expo install --fix`.
+      expo:
+        patterns: ["expo", "expo-*", "@expo/*", "react-native", "react-native-*"]
+      next:
+        patterns: ["next", "@next/*", "eslint-config-next"]
+      supabase:
+        patterns: ["@supabase/*"]
+      sentry:
+        patterns: ["@sentry/*"]
+    ignore:
+      # React must stay in lockstep with the Expo SDK (see apps/mobile/package.json).
+      - dependency-name: "react"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

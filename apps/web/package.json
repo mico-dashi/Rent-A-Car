@@ -1,0 +1,43 @@
+{
+  "name": "@rental/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@rental/api-client": "workspace:*",
+    "@rental/auth": "workspace:*",
+    "@rental/config": "workspace:*",
+    "@rental/database": "workspace:*",
+    "@rental/design-tokens": "workspace:*",
+    "@rental/domain": "workspace:*",
+    "@rental/localization": "workspace:*",
+    "@rental/payments": "workspace:*",
+    "@rental/server": "workspace:*",
+    "@rental/types": "workspace:*",
+    "@rental/validation": "workspace:*",
+    "@sentry/nextjs": "^11.4.0",
+    "@stripe/react-stripe-js": "^3.7.0",
+    "@stripe/stripe-js": "^7.3.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.46.1",
+    "next": "^15.5.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15"
+  }
+}

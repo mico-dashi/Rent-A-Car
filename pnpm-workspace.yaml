@@ -1,0 +1,15 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "e2e"
+
+overrides:
+  # Next.js pins postcss 8.4.31 (GHSA high/moderate advisories fixed in 8.5.x).
+  "next>postcss": "8.5.28"
+
+auditConfig:
+  ignoreGhsas:
+    # No patched release exists; both are only in Expo's CLI (developer
+    # machines / build servers), never shipped in the app. Re-check on Expo upgrades.
+    - GHSA-86w9-cpqp-85rv # node-forge via @expo/cli
+    - GHSA-vfj7-8cjw-p6xm # braces via @expo/cli > @expo/metro-file-map

@@ -1,0 +1,156 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  checks:
+    name: Lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run lint typecheck test
+      - name: Build web and admin (no secrets required at build time)
+        run: pnpm --filter @rental/web build && pnpm --filter @rental/admin build
+      - name: Validate white-label mobile configs
+        run: node apps/mobile/scripts/check-variants.mjs
+
+  database:
+    name: Migrations, RLS, tenant isolation & concurrency
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: pnpm install --frozen-lockfile
+      - name: Apply migrations + seed to a disposable DB and run integration tests
+        run: pnpm test:db
+
+  stack-e2e:
+    name: Services against the local stack + browser E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      # Test-only value for the local stack; never a real secret.
+      CRON_SECRET: ci-local-cron-secret-0123456789
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: pnpm install --frozen-lockfile
+      - name: Fetch PostgREST and Supabase Auth binaries
+        run: bash tools/local-stack/fetch-binaries.sh
+      - name: Start the local Supabase-compatible stack
+        run: |
+          nohup node tools/local-stack/stack.mjs --fresh > stack.log 2>&1 &
+          for i in $(seq 1 90); do curl -sf http://127.0.0.1:54321/auth/v1/health >/dev/null && break; sleep 2; done
+          curl -sf http://127.0.0.1:54321/auth/v1/health || (cat stack.log; exit 1)
+      - name: Server services (PostgREST, GoTrue, storage RLS)
+        run: pnpm test:stack
+      - name: Build and start web + admin against the stack
+        run: |
+          set -a; . tools/local-stack/.data/stack.env; set +a
+          for app in web admin; do grep -E '^(NEXT_PUBLIC|SUPABASE)' tools/local-stack/.data/stack.env > apps/$app/.env.local; echo "CRON_SECRET=$CRON_SECRET" >> apps/$app/.env.local; done
+          # Seeded demo owners have no authenticator; the MFA flow itself is covered by e2e/tests/mfa.spec.ts.
+          echo "ADMIN_MFA_POLICY=enrolled" >> apps/admin/.env.local
+          pnpm --filter @rental/web build && pnpm --filter @rental/admin build
+          nohup pnpm --filter @rental/web start > web.log 2>&1 &
+          nohup pnpm --filter @rental/admin start > admin.log 2>&1 &
+          for port in 3000 3001; do for i in $(seq 1 60); do curl -s -o /dev/null http://localhost:$port && break; sleep 1; done; done
+      - name: Playwright E2E
+        run: |
+          pnpm --filter @rental/e2e exec playwright install --with-deps chromium
+          set -a; . tools/local-stack/.data/stack.env; set +a
+          pnpm test:e2e
+      - name: Upload E2E report and logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+            stack.log
+            web.log
+            admin.log
+
+  audit:
+    name: Dependency audit (production, high+)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Known advisories without a fix are listed with reasons in pnpm-workspace.yaml (auditConfig).
+      - run: pnpm audit --prod --audit-level high
+
+  migration-safety:
+    name: Destructive migration guard
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail on destructive statements in new migrations unless labelled
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          changed=$(git diff --name-only --diff-filter=AM origin/${{ github.base_ref }}...HEAD -- supabase/migrations/)
+          [ -z "$changed" ] && exit 0
+          if ! bash scripts/check-destructive-migrations.sh $changed; then
+            if [[ ",$LABELS," == *",destructive-migration-approved,"* ]]; then
+              echo "Destructive statements present but explicitly approved via label."
+            else
+              echo "::error::Destructive migration detected. Add a reviewed rollback plan and the 'destructive-migration-approved' label."
+              exit 1
+            fi
+          fi
