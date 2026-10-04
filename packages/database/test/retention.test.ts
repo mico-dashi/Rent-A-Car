@@ -47,9 +47,10 @@ describe("data retention", () => {
       const again = await (async () => { await asService(c); return (await c.query("select public.apply_data_retention() r")).rows[0].r; })();
       return { r, rows, left, again, stale, recent, busy };
     });
-    const byId = new Map(res.rows.map((x: { id: string }) => [x.id, x]));
+    type Row = { id: string; first_name: string; email: string; phone: string | null; anonymized_at: string | null };
+    const byId = new Map((res.rows as Row[]).map((x) => [x.id, x]));
     expect(byId.get(res.stale)).toMatchObject({ first_name: "Deleted", phone: null, email: `deleted+${res.stale}@invalid.example` });
-    expect(byId.get(res.stale).anonymized_at).not.toBeNull();
+    expect(byId.get(res.stale)?.anonymized_at).not.toBeNull();
     expect(byId.get(res.recent)).toMatchObject({ first_name: "Ana", anonymized_at: null });
     expect(byId.get(res.busy)).toMatchObject({ first_name: "Ana", anonymized_at: null });
     expect(res.left).toEqual({ lic: 0, threads: 0, msgs: 0 });
