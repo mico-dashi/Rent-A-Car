@@ -5,7 +5,7 @@
  * for scripts; the host list is a fallback for browsers without CSP3.
  * Dependency-free so it can run in the Edge runtime.
  */
-export function buildCsp(opts: { nonce: string; supabaseUrl: string; isDev: boolean; allowStripeFrames?: boolean }): string {
+export function buildCsp(opts: { nonce: string; supabaseUrl: string; isDev: boolean; allowStripeFrames?: boolean; reportOrigin?: string | null }): string {
   const { nonce, supabaseUrl, isDev } = opts;
   const wss = supabaseUrl.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
   return [
@@ -14,7 +14,7 @@ export function buildCsp(opts: { nonce: string; supabaseUrl: string; isDev: bool
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: ${supabaseUrl} https://*.stripe.com https://maps.gstatic.com https://maps.googleapis.com`,
     "font-src 'self' data:",
-    `connect-src 'self' ${supabaseUrl} ${wss} https://api.stripe.com https://maps.googleapis.com`,
+    `connect-src 'self' ${supabaseUrl} ${wss} https://api.stripe.com https://maps.googleapis.com${opts.reportOrigin ? ` ${opts.reportOrigin}` : ""}`,
     opts.allowStripeFrames ? "frame-src https://js.stripe.com https://hooks.stripe.com" : "frame-src 'none'",
     "frame-ancestors 'none'",
     "base-uri 'self'",

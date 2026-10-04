@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { buildCsp, createNonce } from "@rental/config/csp";
+import { sentryOrigin } from "@rental/config/observability";
 
 /**
  * Refreshes the Supabase session cookie on navigation (standard @supabase/ssr
@@ -10,7 +11,7 @@ import { buildCsp, createNonce } from "@rental/config/csp";
 export async function middleware(request: NextRequest) {
   // Per-request CSP nonce: Next.js reads it from the request header and stamps it on its scripts.
   const nonce = createNonce();
-  const csp = buildCsp({ nonce, supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", isDev: process.env.NODE_ENV !== "production", allowStripeFrames: false });
+  const csp = buildCsp({ nonce, supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", isDev: process.env.NODE_ENV !== "production", reportOrigin: sentryOrigin(process.env.NEXT_PUBLIC_SENTRY_DSN), allowStripeFrames: false });
   request.headers.set("x-nonce", nonce);
   request.headers.set("content-security-policy", csp);
   const withCsp = (r: NextResponse) => { r.headers.set("content-security-policy", csp); return r; };

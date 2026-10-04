@@ -30,7 +30,7 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
   ]);
   const docs = [
     ...(agreement?.pdf_path ? [{ href: `/account/documents/agreement/${agreement.id}`, label: t("documents.agreementTitle") }] : []),
-    ...(invoices ?? []).filter((i) => i.pdf_path).map((i) => ({ href: `/account/documents/invoice/${i.id}`, label: `${t(i.kind === "RECEIPT" ? "documents.receipt" : "documents.invoice")} ${i.number}` })),
+    ...((invoices ?? []) as { id: string; kind: string; number: string; pdf_path: string | null }[]).filter((i) => i.pdf_path).map((i) => ({ href: `/account/documents/invoice/${i.id}`, label: `${t(i.kind === "RECEIPT" ? "documents.receipt" : "documents.invoice")} ${i.number}` })),
   ];
   const tz = b.pickup?.timezone ?? "UTC";
   const cancellation = quoteCancellation(

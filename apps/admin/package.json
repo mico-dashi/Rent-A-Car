@@ -19,28 +19,29 @@
     "@rental/design-tokens": "workspace:*",
     "@rental/domain": "workspace:*",
     "@rental/localization": "workspace:*",
+    "@rental/maps": "workspace:*",
+    "@rental/notifications": "workspace:*",
     "@rental/payments": "workspace:*",
+    "@rental/server": "workspace:*",
     "@rental/types": "workspace:*",
+    "@rental/ui": "workspace:*",
     "@rental/validation": "workspace:*",
+    "@sentry/nextjs": "^11.4.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.46.1",
     "next": "^15.5.4",
+    "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "server-only": "^0.0.1",
-    "@rental/ui": "workspace:*",
-    "@rental/notifications": "workspace:*",
-    "@rental/maps": "workspace:*",
-    "qrcode": "^1.5.4",
-    "pdf-lib": "^1.17.1",
-    "@rental/server": "workspace:*"
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.15",
-    "@types/qrcode": "^1.5.5"
+    "tailwindcss": "^3.4.15"
   }
 }

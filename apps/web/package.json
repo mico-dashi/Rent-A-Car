@@ -20,8 +20,10 @@
     "@rental/domain": "workspace:*",
     "@rental/localization": "workspace:*",
     "@rental/payments": "workspace:*",
+    "@rental/server": "workspace:*",
     "@rental/types": "workspace:*",
     "@rental/validation": "workspace:*",
+    "@sentry/nextjs": "^11.4.0",
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.3.0",
     "@supabase/ssr": "^0.7.0",
@@ -29,8 +31,7 @@
     "next": "^15.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "server-only": "^0.0.1",
-    "@rental/server": "workspace:*"
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@types/react": "^19.1.0",
